@@ -6,15 +6,15 @@
 <title>Ashur Ascendant</title>
 <style>
   * { box-sizing: border-box; }
-  html, body { margin: 0; height: 100%; background: #10182b; color: #eadfc4; font: 13px/1.4 Georgia, 'Times New Roman', serif; overflow: hidden; }
-  #top { height: 44px; display: flex; align-items: center; gap: 18px; padding: 0 14px; background: #17233f; border-bottom: 2px solid #c9962e; white-space: nowrap; }
+  html, body { margin: 0; height: 100%; display: flex; flex-direction: column; background: #10182b; color: #eadfc4; font: 13px/1.4 Georgia, 'Times New Roman', serif; overflow: hidden; }
+  #top { min-height: 44px; flex: none; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 18px; padding: 6px 14px; background: #17233f; border-bottom: 2px solid #c9962e; white-space: nowrap; }
   #top h1 { font-size: 17px; margin: 0; color: #e6b84a; letter-spacing: 2px; text-transform: uppercase; }
   #top .sp { flex: 1; }
   .btn { display: inline-block; padding: 3px 9px; border: 1px solid #c9962e; border-radius: 3px; background: #23345c; color: #f1e5c6; cursor: pointer; user-select: none; }
   .btn:hover { background: #30467a; }
   .btn.on { background: #c9962e; color: #17233f; font-weight: bold; }
   .btn.off { opacity: .4; cursor: default; }
-  #main { display: flex; height: calc(100% - 44px); }
+  #main { display: flex; flex: 1; min-height: 0; }
   #side { width: 290px; flex: none; overflow-y: auto; padding: 10px 12px 30px; background: #141e36; border-right: 1px solid #2c3d66; }
   #side h3 { margin: 14px 0 6px; font-size: 12px; letter-spacing: 1.5px; text-transform: uppercase; color: #e6b84a; border-bottom: 1px solid #2c3d66; padding-bottom: 3px; }
   #side h3:first-child { margin-top: 0; }
