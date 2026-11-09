@@ -32,7 +32,7 @@
   .sw { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; vertical-align: middle; box-shadow: 0 0 0 1px rgba(0,0,0,.5); }
   .good { color: #8fdc8a; } .bad { color: #f39483; }
   .ic { stroke: #fff; stroke-width: 1.3; fill: none; stroke-linecap: round; stroke-linejoin: round; }
-  svg.ui { width: 22px; height: 22px; flex: none; background: #0d1424; border: 1px solid var(--line); border-radius: 50%; padding: 3px; margin-right: 8px; vertical-align: middle; }
+  svg.ui { width: 28px; height: 32px; flex: none; background: #d9c9a0; border: 1px solid var(--line); border-radius: 5px; padding: 2px; margin-right: 8px; vertical-align: middle; }
   .bar { height: 5px; background: #0d1424; border-radius: 3px; overflow: hidden; margin: 4px 0; } .bar i { display: block; height: 100%; background: #7fe07a; }
   #mapwrap { flex: 1; position: relative; min-width: 0; touch-action: none; background: #244463; }
   #mapwrap::after { content: ''; position: absolute; inset: 0; pointer-events: none; box-shadow: inset 0 0 120px rgba(5,10,22,.75); }
@@ -49,9 +49,14 @@
   #map .fl { font: 700 11px Cinzel, Georgia, serif; text-anchor: middle; paint-order: stroke; stroke: rgba(0,0,0,.8); stroke-width: 3px; }
   #log, #hint, #tip { position: absolute; background: rgba(13,20,36,.92); border: 1px solid var(--line); border-radius: 4px; padding: 6px 10px; font-size: 12px; pointer-events: none; z-index: 1; }
   #legend { position: absolute; left: 10px; top: 10px; background: rgba(13,20,36,.88); border: 1px solid var(--line); border-radius: 4px; padding: 6px 10px; font-size: 11px; line-height: 2; pointer-events: none; z-index: 1; }
-  #legend svg.ui { width: 18px; height: 18px; padding: 2px; margin-right: 6px; }
-  #log { right: 10px; bottom: 10px; width: 340px; } #log div { padding: 1px 0; }
-  #hint { left: 10px; bottom: 10px; }
+  #legend svg.ui { width: 20px; height: 23px; padding: 1px; margin: 2px 6px 2px 0; }
+  #gens { position: absolute; left: 0; right: 0; bottom: 0; display: flex; gap: 6px; padding: 14px 10px 6px; overflow-x: auto; background: linear-gradient(rgba(13,20,36,0), rgba(13,20,36,.95) 35%); z-index: 2; }
+  .gen { display: flex; gap: 7px; align-items: center; flex: none; min-width: 190px; padding: 4px 9px 4px 4px; background: var(--panel2); border: 1px solid var(--line); border-radius: 5px; cursor: pointer; font-size: 11.5px; line-height: 1.3; white-space: nowrap; }
+  .gen:hover { border-color: var(--gold); } .gen.on { border-color: var(--gold2); box-shadow: 0 0 0 1px var(--gold2); } .gen.fight { border-color: #e0453a; }
+  .gen svg { width: 44px; height: 53px; border-radius: 4px; flex: none; border: 1px solid var(--gold); }
+  .gen .muted { font-size: 11px; }
+  #log { right: 10px; bottom: 96px; width: 340px; } #log div { padding: 1px 0; }
+  #hint { left: 10px; bottom: 96px; }
   #tip { display: none; width: 195px; border-color: var(--gold); z-index: 5; }
   #modal { position: fixed; inset: 0; background: rgba(5,8,16,.78); display: none; align-items: center; justify-content: center; z-index: 10; }
   #modal .box { width: min(500px, 90vw); background: linear-gradient(#1f2d52, #141e3a); border: 2px solid var(--gold); border-radius: 6px; padding: 24px 28px; font-size: 14px; line-height: 1.55; box-shadow: 0 10px 50px #000; animation: pop .25s ease-out; }
@@ -67,11 +72,11 @@
   <div id="mapwrap">
     <svg id="map" viewBox="0 0 1200 700" preserveAspectRatio="xMidYMid meet"></svg>
     <div id="legend"></div><div id="hint"></div><div id="tip"></div>
-    <div id="log"></div>
+    <div id="log"></div><div id="gens"></div>
   </div>
 </div>
 <div id="modal"><div class="box"><h2 id="mt"></h2><div id="mb"></div><div id="mbtn"></div></div></div>
-<script src="sim.js?v=9"></script>
-<script src="ui.js?v=9"></script>
+<script src="sim.js?v=10"></script>
+<script src="ui.js?v=10"></script>
 </body>
 </html>

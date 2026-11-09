@@ -132,8 +132,14 @@
   }
 
   const GEN = ['Shamshi-ilu', 'Bel-dan', 'Nabu-etir', 'Ashur-daninanni', 'Sin-taklak', 'Ninurta-ilaya', 'Marduk-remanni', 'Nergal-eresh', 'Bel-emuranni', 'Mannu-ki-Ashur', 'Sharru-emuranni', 'Tab-shar-Ashur', 'Ashur-shallimanni', 'Nabu-dainanni', 'Adad-issiya', 'Bel-harran-shadua'];
+  const TRAITS = {
+    siege: { name: 'Siege Master', desc: 'sieges 40% faster' }, charge: { name: 'Chariot Lord', desc: '+15% attack on open ground' },
+    mountain: { name: 'Mountain Fox', desc: '+25% attack in mountains' }, drill: { name: 'Iron Disciplinarian', desc: 'morale recovers twice as fast' },
+    march: { name: 'Swift Marcher', desc: 'marches 25% faster' }, guard: { name: 'Shield Wall', desc: '+15% defence' }
+  };
+  function newGen() { const k = Object.keys(TRAITS); return { name: GEN[Math.floor(Math.random() * GEN.length)], skill: 1 + Math.floor(Math.pow(Math.random(), 1.8) * 5), trait: k[Math.floor(Math.random() * k.length)] }; }
   function mkArmy(owner, prov, men, name) {
-    const a = { id: S.nextId++, owner, prov, name, men: Object.assign({ spear: 0, bow: 0, cav: 0, char: 0, ram: 0 }, men), morale: 100, path: [], prog: 0, retreating: false, inCombat: false, dead: false, xp: 0, stormCd: 0, attr: false, gen: { name: GEN[Math.floor(Math.random() * GEN.length)], skill: 1 + Math.floor(Math.pow(Math.random(), 1.8) * 5) } };
+    const a = { id: S.nextId++, owner, prov, name, men: Object.assign({ spear: 0, bow: 0, cav: 0, char: 0, ram: 0 }, men), morale: 100, path: [], prog: 0, retreating: false, inCombat: false, dead: false, xp: 0, stormCd: 0, attr: false, gen: newGen() };
     S.armies.push(a); return a;
   }
 
@@ -146,7 +152,7 @@
     }));
     for (const p of provs) p.core = p.owner;
     buildMap(provs);
-    S = { day: 0, provs, facs: {}, armies: [], nextId: 1, log: [], events: [], over: null, won: false, auto: false, levy: 1, nextEvent: 80 };
+    S = { day: 0, provs, facs: {}, armies: [], nextId: 1, log: [], events: [], over: null, won: false, auto: false, levy: 1, nextEvent: 80, chapter: 0 };
     for (const id in FDEF) {
       const d = FDEF[id];
       S.facs[id] = {
@@ -160,12 +166,13 @@
       const n = START_MEN[id];
       mkArmy(id, f.capital, { spear: n * 0.55, bow: n * 0.3, cav: n * 0.12, char: n * 0.03 }, 'Host of ' + f.name);
     }
-    mkArmy(PLAYER, provByName('Kalhu').id, { spear: 8000, bow: 5000, cav: 1500, char: 400, ram: 300 }, 'Royal Army').gen = { name: 'Tiglath-Pileser', skill: 4 };
+    mkArmy(PLAYER, provByName('Kalhu').id, { spear: 8000, bow: 5000, cav: 1500, char: 400, ram: 300 }, 'Royal Army').gen = { name: 'Tiglath-Pileser', skill: 4, trait: 'siege' };
     mkArmy(PLAYER, provByName('Harran').id, { spear: 5000, bow: 3000, cav: 500 }, 'Army of the West');
     S.events.push({
       title: 'The Revolt at Kalhu',
       text: 'Ayyaru, 745 BC. The governor Pulu has seized the throne in Kalhu and taken the name Tiglath-Pileser. Assyria is weak: Urartu dominates the north, the western vassals have stopped paying tribute, and Babylon is restless.<br><br>Restore the empire. Take <b>Babylon</b>, <b>Damascus</b> and <b>Tushpa</b>. A kingdom falls when its capital falls. Lose Kalhu and your reign is over.<br><br>Select an army, then click a province to march. You can only enter the lands of kingdoms you are at war with.'
     });
+    S.events.push(chapterEvent(STORY[0]));
     log('A new king sits in Kalhu.');
     return S;
   }
@@ -193,11 +200,11 @@
   function rawPower(a) { let s = 0; for (const t in UNITS) s += a.men[t] * UNITS[t].atk; return s; }
   function power(a, p) {
     let s = 0; for (const t in UNITS) s += a.men[t] * UNITS[t].atk * (t === 'char' && p.mtn ? 0.4 : 1);
-    return s * S.facs[a.owner].mods.atk * (0.5 + a.morale / 200) * (1 + 0.05 * a.gen.skill + a.xp / 400);
+    return s * S.facs[a.owner].mods.atk * (0.5 + a.morale / 200) * (1 + 0.05 * a.gen.skill + a.xp / 400) * (a.gen.trait === 'charge' && !p.mtn ? 1.15 : a.gen.trait === 'mountain' && p.mtn ? 1.25 : 1);
   }
   function tough(b, p) {
     let s = 0; for (const t in UNITS) s += b.men[t] * UNITS[t].def;
-    return s / Math.max(1, total(b)) * S.facs[b.owner].mods.def * (b.owner === p.owner ? 1 + 0.08 * p.fort + (p.mtn ? 0.25 : 0) : 1);
+    return s / Math.max(1, total(b)) * S.facs[b.owner].mods.def * (b.gen.trait === 'guard' ? 1.15 : 1) * (b.owner === p.owner ? 1 + 0.08 * p.fort + (p.mtn ? 0.25 : 0) : 1);
   }
   function group() { const m = new Map(); for (const a of S.armies) { if (a.dead) continue; if (!m.has(a.prov)) m.set(a.prov, []); m.get(a.prov).push(a); } return m; }
 
@@ -446,12 +453,46 @@
         { label: 'Burn the tents and rest (40 silver)', fx: () => { f.silver = Math.max(0, f.silver - 40); for (const t in big.men) big.men[t] *= 0.95; } },
         { label: 'March on regardless', fx: () => { for (const t in big.men) big.men[t] *= 0.86; big.morale = Math.max(10, big.morale - 10); log(big.name + ' loses many men to fever.', 'bad'); } }] });
       pool.push({ title: 'A Veteran Asks to Serve', text: 'A scarred captain of the old king has come to court. He asks for a command.', choices: [
-        { label: 'Give him ' + big.name, fx: () => { big.gen = { name: GEN[Math.floor(Math.random() * GEN.length)], skill: Math.min(5, big.gen.skill + 2) }; log(big.gen.name + ' takes command of ' + big.name + '.', 'good'); } },
+        { label: 'Give him ' + big.name, fx: () => { const g2 = newGen(); g2.skill = Math.min(5, big.gen.skill + 2); big.gen = g2; log(big.gen.name + ' takes command of ' + big.name + '.', 'good'); } },
         { label: 'Feast him and send him home', fx: () => { all(a => { a.morale = Math.min(100, a.morale + 10); }); } }] });
     }
+    const nb = Object.keys(S.facs).filter(id => id !== PLAYER && id !== 'REB' && S.facs[id].alive && !atWar(PLAYER, id) && !S.facs[id].tributary && S.provs.some(p => p.owner === id && p.adj.some(q => S.provs[q].owner === PLAYER)));
+    const N = nb.length ? S.facs[nb[Math.floor(Math.random() * nb.length)]] : null, capP = S.provs[f.capital];
+    pool.push(
+      { title: 'The Royal Lion Hunt', text: 'Lions have been taken alive on the steppe and caged at Kalhu. The court expects the king to face them from his chariot, as his fathers did.', choices: [
+        { label: 'Hold the hunt (50 silver)', fx: () => { f.silver = Math.max(0, f.silver - 50); all(a => { a.morale = Math.min(100, a.morale + 20); a.xp = Math.min(100, a.xp + 5); }); log('The king kills four lions. The army roars his name.', 'good'); } },
+        { label: 'There is a war to run', fx: () => { } }] },
+      { title: 'Drought on the Khabur', text: 'The spring rains failed in the west. Villages are emptying and the levy rolls with them.', choices: [
+        { label: 'Buy grain from the south (80 silver)', fx: () => { if (f.silver >= 80) f.silver -= 80; else { f.mp = Math.max(0, f.mp - 4000); log('We could not pay. Thousands leave the land.', 'bad'); } } },
+        { label: 'Let them fend for themselves (-4000 manpower)', fx: () => { f.mp = Math.max(0, f.mp - 4000); } }] },
+      { title: 'Swords for Hire', text: 'A company of Ionian and Carian spearmen has landed on the coast looking for a paymaster.', choices: [
+        { label: 'Hire them (90 silver, 2000 spearmen)', fx: () => { if (f.silver >= 90) { f.silver -= 90; muster(f, { type: 'spear', prov: null }); muster(f, { type: 'spear', prov: null }); } else log('The mercenaries laugh at our empty purse.', 'bad'); } },
+        { label: 'Assyria fights its own wars', fx: () => { } }] },
+      { title: 'The Temple of Ashur', text: 'The high priest reminds the king that the god gave him the throne, and that the god\'s house needs a new roof of cedar.', choices: [
+        { label: 'Give generously (100 silver)', fx: () => { if (f.silver >= 100) { f.silver -= 100; for (const p of S.provs) if (p.owner === PLAYER) p.unrest = Math.max(0, p.unrest - 30); all(a => { a.morale = Math.min(100, a.morale + 10); }); log('The priests bless the king in every city. Unrest falls.', 'good'); } else log('The treasury is bare. The priests are displeased.', 'bad'); } },
+        { label: 'The god can wait', fx: () => { for (const p of S.provs) if (p.owner === PLAYER) p.unrest = Math.min(100, p.unrest + 12); log('The priests mutter against the king. Unrest rises.', 'bad'); } }] },
+      { title: 'The Prophetess of Arbela', text: 'A woman of the temple of Ishtar cries out in a trance: "Fear not, king. I go before you and behind you. Your enemies will roll like ripe apples at your feet."', choices: [
+        { label: 'Have it read to every army', fx: () => { all(a => { a.xp = Math.min(100, a.xp + 10); a.morale = Math.min(100, a.morale + 10); }); log('The soldiers believe the goddess marches with them.', 'good'); } },
+        { label: 'Carve it on a stele in each province', fx: () => { for (const p of S.provs) if (p.owner === PLAYER) p.unrest = Math.max(0, p.unrest - 25); log('The people take heart. Unrest falls.', 'good'); } }] },
+      { title: 'The Tigris in Flood', text: 'The river has broken the dikes below ' + capP.name + '. Fields are under water and the lower town is knee deep.', choices: [
+        { label: 'Rebuild the dikes at once (80 silver)', fx: () => { if (f.silver >= 80) f.silver -= 80; else { capP.unrest = Math.min(100, capP.unrest + 35); log('No silver for the dikes. The capital suffers.', 'bad'); } } },
+        { label: 'Let the governor handle it', fx: () => { capP.unrest = Math.min(100, capP.unrest + 35); log('The capital is slow to recover. Its income falls for a time.', 'bad'); } }] },
+      { title: 'A Spy in the Palace', text: 'A cupbearer has been caught copying dispatches onto a wax tablet hidden in his sleeve.', choices: [
+        { label: 'Impale him before the gate', fx: () => { all(a => { a.morale = Math.min(100, a.morale + 8); }); log('No one doubts the king\'s eyes are everywhere.', 'good'); } },
+        { label: 'Turn him and feed his masters lies (+90 silver in bribes)', fx: () => { f.silver += 90; } }] },
+      { title: 'Craftsmen from the Conquered', text: 'A column of deported masons, smiths and carpenters has reached the heartland and awaits the king\'s orders.', choices: [
+        { label: 'Build a market in ' + capP.name, fx: () => { if (capP.bld.m < 2) capP.bld.m++; else f.silver += 100; log('The craftsmen set to work.', 'good'); } },
+        { label: 'Raise the walls of ' + capP.name, fx: () => { if (capP.fort < 4) capP.fort++; else f.silver += 100; log('The craftsmen set to work.', 'good'); } }] },
+      { title: 'Bandits on the Royal Road', text: 'Tribute caravans are being stripped in the passes. The governors blame each other.', choices: [
+        { label: 'Pay the tribes to stop (60 silver)', fx: () => { f.silver = Math.max(0, f.silver - 60); } },
+        { label: 'Hunt them down', fx: () => { if (big) for (const t in big.men) big.men[t] *= 0.97; f.silver += 110; log('The bandits are crucified along the road. We recover 110 silver.', 'good'); } }] });
+    if (N) pool.push({ title: 'An Offer of Marriage', text: 'The king of ' + N.name + ' offers a daughter for the royal house, with a dowry in silver.', choices: [
+      { label: 'Accept with thanks (+150 silver)', fx: () => { f.silver += 150; } },
+      { label: 'Demand twice the dowry', fx: () => { if (Math.random() < 0.5) { f.silver += 300; log(N.name + ' swallows the insult and pays 300 silver.', 'good'); } else declareWar(N.id, PLAYER); } }] });
     S.events.push(pool[Math.floor(Math.random() * pool.length)]);
   }
   function world() {
+    checkStory();
     const by = group();
     for (const p of S.provs) {
       if (p.type !== 'land' || p.owner === 'REB' || p.unrest <= 0) continue;
@@ -481,6 +522,30 @@
     for (const id in S.facs) delete S.facs[id].war.REB;
     S.facs.REB.war = {};
   }
+  const own = n => provByName(n).owner === PLAYER, bowed = id => !S.facs[id].alive || S.facs[id].tributary;
+  const STORY = [
+    { title: 'I. The Usurper', goal: 'Proclaim your first royal edict.', reward: '+100 silver', done: () => Object.keys(S.facs[PLAYER].done).length > 0, give: f => { f.silver += 100; },
+      text: 'For forty years the great governors ruled Assyria as they pleased, while weak kings sealed whatever was put before them. Pulu, governor of Kalhu, has ended that with a palace revolt and taken the throne name Tiglath-Pileser. Now he must show the magnates that the king rules again.' },
+    { title: 'II. The Mountain King', goal: 'Humble Urartu: take one of its provinces or make it pay tribute.', reward: '+4000 manpower', done: () => bowed('URA') || S.provs.some(p => p.core === 'URA' && p.owner === PLAYER), give: f => { f.mp += 4000; },
+      text: 'The provinces answer to the crown again. But in the north Sarduri of Urartu calls himself King of Kings. His allies hold the roads to the sea, and his riders raid within sight of Nineveh. He will not wait for you to grow strong.' },
+    { title: 'III. The Road to the Sea', goal: 'Take Arpad, or bring the Syro-Hittite League to heel.', reward: '+200 silver', done: () => own('Arpad') || bowed('HAT'), give: f => { f.silver += 200; },
+      text: 'Sarduri is thrown back into his mountains. They say he fled the field by night on a mare. The western kings who trusted him now stand alone. Arpad, the key of Syria, has shut its gates. It once held out three years against the kings of Ashur.' },
+    { title: 'IV. The Lion of Damascus', goal: 'Take Damascus.', reward: '+300 silver, +3000 manpower', done: () => own('Damascus'), give: f => { f.silver += 300; f.mp += 3000; },
+      text: 'The cedar coast lies open and Tyre sends gold. Rezin of Damascus and Pekah of Israel have sworn to throw Assyria back across the Euphrates, and they press Judah to join them. Ahaz of Judah sends a message instead: "I am your servant and your son. Come up and save me."' },
+    { title: 'V. The Hands of Bel', goal: 'Take Babylon.', reward: '+400 silver', done: () => own('Babylon'), give: f => { f.silver += 400; },
+      text: 'Damascus is a province and its orchards are cut down. In the south a Chaldean chief has seized the throne of Babylon, the holy city no Assyrian has ruled in his own name for centuries. To take the hands of the god Bel at the New Year festival is to be king of Babylon by right.' },
+    { title: 'VI. King of the Four Quarters', goal: 'Hold Babylon, Damascus and Tushpa together.', reward: 'Victory', done: () => GOALS.every(own), give: () => { },
+      text: 'Pulu, king of Babylon. Tiglath-Pileser, king of Assyria. Two crowns on one head. One rival remains who has never bowed. Break the rock of Tushpa and no one under heaven will call himself your equal.' }
+  ];
+  function chapterEvent(c) { return { title: c.title, text: c.text + '<br><br><b>Objective:</b> ' + c.goal + '<br><b>Reward:</b> ' + c.reward }; }
+  function checkStory() {
+    if (S.auto || S.chapter === undefined) return;
+    while (S.chapter < STORY.length && STORY[S.chapter].done()) {
+      const c = STORY[S.chapter]; c.give(S.facs[PLAYER]); S.chapter++;
+      log('Chapter complete: ' + c.title + '. ' + c.reward + '.', 'good');
+      if (S.chapter < STORY.length) S.events.push(chapterEvent(STORY[S.chapter]));
+    }
+  }
   function save() { return JSON.stringify(S, (k, v) => (k === 'foes' || k === 'events') ? undefined : v); }
   function load(str) { S = JSON.parse(str); S.events = []; purgeRebels(); return S; }
 
@@ -506,12 +571,12 @@
       if (a.attr) for (const t in a.men) a.men[t] *= 0.9985;
     }
     for (const a of S.armies) {
-      if (!a.path.length) { if (!a.inCombat) a.morale = Math.min(100, a.morale + 1.2); continue; }
+      if (!a.path.length) { if (!a.inCombat) a.morale = Math.min(100, a.morale + (a.gen.trait === 'drill' ? 2.4 : 1.2)); continue; }
       if (a.inCombat && !a.retreating) continue;
       const d = S.provs[a.path[0]];
       if (!canEnter(a.owner, d)) { a.path = []; a.retreating = false; continue; }
       a.prog++;
-      if (a.prog >= (d.mtn ? 9 : 6) / S.facs[a.owner].mods.speed * (a.retreating ? 0.6 : 1)) {
+      if (a.prog >= (d.mtn ? 9 : 6) / S.facs[a.owner].mods.speed / (a.gen.trait === 'march' ? 1.25 : 1) * (a.retreating ? 0.6 : 1)) {
         a.prov = d.id; a.path.shift(); a.prog = 0;
         if (a.retreating) { a.retreating = false; a.path = []; }
       }
@@ -527,7 +592,7 @@
         const o = Object.keys(str).sort((x, y) => str[y] - str[x])[0];
         const rams = bes.reduce((s, a) => s + (a.owner === o ? a.men.ram : 0), 0);
         if (p.sieger !== o) { p.sieger = o; p.siege = 0; }
-        p.siege += Math.min(1, str[o] / 3000) * (1 + Math.min(2, rams / 300 * 0.5)) * S.facs[o].mods.siege;
+        p.siege += Math.min(1, str[o] / 3000) * (1 + Math.min(2, rams / 300 * 0.5)) * S.facs[o].mods.siege * (bes.some(a => a.owner === o && a.gen.trait === 'siege') ? 1.4 : 1);
         if (p.siege >= siegeNeed(p)) capture(p, o);
       } else if (p.siege > 0) { p.siege = Math.max(0, p.siege - 1); if (!p.siege) p.sieger = null; }
     }
@@ -540,7 +605,7 @@
 
   root.Game = {
     W, H, PLAYER, UNITS, EDICTS, GOALS, ALLIES, PDEF,
-    newGame, tick, BUILD, build, storm, demandTribute, save, load, isWinter, order, halt, recruit, unitCost, startEdict, declareWar, proposePeace, split, merge, econ,
+    newGame, tick, TRAITS, STORY, chapterEvent, BUILD, build, storm, demandTribute, save, load, isWinter, order, halt, recruit, unitCost, startEdict, declareWar, proposePeace, split, merge, econ,
     reach: (fid, from) => bfs(fid, from).dist, total, menOf, countProvs, atWar, canEnter, findPath, siegeNeed, dateStr, provByName, allyOf,
     get S() { return S; }
   };

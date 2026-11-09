@@ -14,7 +14,7 @@
 
   /* ---------- sound (synthesised, no files) ---------- */
   let ac = null, master = null, rev = null, muted = false, music = true, lastSfx = {}, musicT = 0, mIdx = 4, mCount = 0;
-  const SAVE = 'ashur-save-v2';
+  const SAVE = 'ashur-save-v3';
   function audio() {
     if (!ac) {
       try {
@@ -95,7 +95,30 @@
     char: '<circle cx="6" cy="6" r="4"/><path d="M6 2v8M2 6h8M3.2 3.2l5.6 5.6M8.8 3.2L3.2 8.8"/>',
     ram: '<path d="M1.5 5h7v2.5h-7zM8.5 4.2l2 2-2 2"/><circle cx="3.5" cy="9.5" r="1.2"/><circle cx="7" cy="9.5" r="1.2"/>'
   };
-  const uiIcon = t => '<svg class="ui ic" viewBox="0 0 12 12"><use href="#i-' + t + '"/></svg>';
+  const uiIcon = t => '<svg class="ui" viewBox="0 0 14 16" style="color:#c9962e"><use href="#m-' + t + '"/></svg>';
+  const BODY = (x, skin) => '<rect x="' + (x + 0.3) + '" y="12" width="1.7" height="3.6" fill="#5b3d22"/><rect x="' + (x + 2.9) + '" y="12" width="1.7" height="3.6" fill="#5b3d22"/><rect x="' + x + '" y="6" width="4.9" height="6.6" rx="1.5" fill="currentColor"/><rect x="' + x + '" y="6" width="4.9" height="6.6" rx="1.5" fill="url(#sh)"/><circle cx="' + (x + 2.45) + '" cy="4.3" r="2" fill="' + (skin || '#d9a878') + '"/><path d="M' + (x + 0.9) + ' 5.3q1.5 1.6 3.1 0v1.4q-1.6 1-3.1 0z" fill="#2a1a0c"/>';
+  const HELM = x => '<path d="M' + (x + 0.3) + ' 4L' + (x + 2.45) + ' .4 ' + (x + 4.6) + ' 4z" fill="#c3c9d1" stroke="#6d737b" stroke-width=".3"/>';
+  const HORSE = (x, y, k) => '<g transform="translate(' + x + ',' + y + ') scale(' + k + ')"><rect x="-4" y="1.5" width="1.2" height="4.3" fill="#3f2816"/><rect x="-1.6" y="1.5" width="1.2" height="4.3" fill="#4d321c"/><rect x="1.4" y="1.5" width="1.2" height="4.3" fill="#3f2816"/><rect x="3.4" y="1.5" width="1.2" height="4.3" fill="#4d321c"/><ellipse rx="5" ry="2.7" fill="#7a4f2a"/><ellipse rx="5" ry="2.7" fill="url(#sh)"/><path d="M3.2-1.2l2-4.6 2 1-.5 1.9 1 2.2-1.2.7-1.3-1.6-1 2.2z" fill="#7a4f2a"/><path d="M3.6-1.4l1.7-4" stroke="#2a1a0c" stroke-width=".9"/><path d="M-4.8-.8q-2 1.5-1.2 4.5" fill="none" stroke="#2a1a0c" stroke-width="1"/></g>';
+  const MINI = {
+    spear: '<line x1="11.6" y1="1.2" x2="11.6" y2="15.6" stroke="#5a3b1a" stroke-width=".8"/><path d="M11.6 0l1.1 2.6h-2.2z" fill="#dfe4ea"/>' + BODY(5.6) + HELM(5.6) + '<circle cx="5.2" cy="9.6" r="3.5" fill="currentColor" stroke="#2a1d0c" stroke-width=".5"/><circle cx="5.2" cy="9.6" r="3.5" fill="url(#shr)"/><circle cx="5.2" cy="9.6" r="1" fill="#f1dfa0"/>',
+    bow: '<rect x="10.6" y="4.6" width="1.7" height="5.4" rx=".6" fill="#6b4a2a" transform="rotate(18 11.4 7.3)"/><path d="M10.8 4.2l.4-1.8M11.8 4.4l.9-1.6" stroke="#eee" stroke-width=".4"/>' + BODY(5.6) + '<rect x="5.7" y="2.5" width="4.7" height="1" fill="currentColor"/><path d="M4 2.6Q-.6 8.6 4 14.6" fill="none" stroke="#8a5420" stroke-width="1.1"/><line x1="4" y1="2.6" x2="4" y2="14.6" stroke="#f3f3f3" stroke-width=".35"/><line x1="1.4" y1="8.6" x2="8" y2="8.6" stroke="#f3f3f3" stroke-width=".5"/><path d="M1.4 8.6l1.3-.8v1.6z" fill="#dfe4ea"/>',
+    cav: '<line x1="10.5" y1=".6" x2="6.5" y2="12" stroke="#5a3b1a" stroke-width=".7"/><path d="M10.7 0l.2 2.3-1.7-.7z" fill="#dfe4ea"/>' + HORSE(6.2, 10.2, 1) + '<rect x="4.2" y="4.2" width="3.9" height="5" rx="1.3" fill="currentColor"/><rect x="4.2" y="4.2" width="3.9" height="5" rx="1.3" fill="url(#sh)"/><circle cx="6.15" cy="2.9" r="1.7" fill="#d9a878"/><path d="M4.4 2.6L6.15-.2 7.9 2.6z" fill="#c3c9d1"/>',
+    char: HORSE(10.2, 11, 0.62) + '<line x1="5" y1="10.4" x2="9" y2="10.4" stroke="#3a2410" stroke-width=".6"/><circle cx="6.2" cy="5.2" r="1.6" fill="#d9a878"/><path d="M4.5 5L6.2 2.3 7.9 5z" fill="#c3c9d1"/><circle cx="3.3" cy="5.9" r="1.4" fill="#d9a878"/><path d="M1 6.5h7.2l.6 5H1.6z" fill="currentColor" stroke="#2a1d0c" stroke-width=".4"/><path d="M1 6.5h7.2l.6 5H1.6z" fill="url(#sh)"/><circle cx="4.4" cy="12.4" r="3.1" fill="#c79a4e" stroke="#3a2410" stroke-width=".8"/><path d="M4.4 9.3v6.2M1.3 12.4h6.2M2.2 10.2l4.4 4.4M6.6 10.2l-4.4 4.4" stroke="#3a2410" stroke-width=".45"/><circle cx="4.4" cy="12.4" r=".8" fill="#3a2410"/>',
+    ram: '<rect x="8.6" y="8.6" width="5" height="1.7" rx=".4" fill="#5a3b1a"/><circle cx="13.3" cy="9.45" r="1.25" fill="#c3c9d1" stroke="#6d737b" stroke-width=".3"/><path d="M1 13.2V8.4l2.6-3.4h5.6l1.8 3.4v4.8z" fill="currentColor" stroke="#2a1d0c" stroke-width=".4"/><path d="M1 13.2V8.4l2.6-3.4h5.6l1.8 3.4v4.8z" fill="url(#sh)"/><path d="M3.6 5V2.6h2.2V5" fill="currentColor" stroke="#2a1d0c" stroke-width=".4"/><path d="M1 8.4h10M4.2 5v8.2M7.6 5v8.2" stroke="rgba(0,0,0,.3)" stroke-width=".4"/><circle cx="3.4" cy="13.7" r="1.9" fill="#3a2410"/><circle cx="8.8" cy="13.7" r="1.9" fill="#3a2410"/><circle cx="3.4" cy="13.7" r=".6" fill="#c79a4e"/><circle cx="8.8" cy="13.7" r=".6" fill="#c79a4e"/>'
+  };
+  const HATS = h => [
+    '<path d="M11 14.5L20 1l9 13.5z" fill="#b9bfc7" stroke="#6d737b" stroke-width=".6"/><rect x="10.5" y="13.4" width="19" height="2.2" fill="#8d939b"/>',
+    '<path d="M11.5 13q8.5-9 17 0z" fill="' + h + '"/><rect x="11.5" y="11.6" width="17" height="2.5" fill="#f3d584"/>',
+    '<path d="M12 13V8q8-4 16 0v5z" fill="#efe6cf" stroke="#b7a780" stroke-width=".5"/><rect x="12" y="11.4" width="16" height="1.7" fill="#a8423d"/>',
+    '<path d="M12 13V6q8-3 16 0v7z" fill="#f6efd9" stroke="#d9aa3f" stroke-width=".7"/><path d="M18 5.2L20 0l2 5.2z" fill="#d9aa3f"/><rect x="12" y="7.8" width="16" height="1.5" fill="#d9aa3f"/><rect x="12" y="11.3" width="16" height="1.5" fill="#d9aa3f"/>'];
+  function portrait(g, col) {
+    let h = 0; for (let i = 0; i < g.name.length; i++) h = (h * 31 + g.name.charCodeAt(i)) >>> 0;
+    const skin = ['#d9a878', '#c8935f', '#b98252', '#e0b488'][h % 4], hair = ['#1c130b', '#2b1a0e', '#3a2a1a', '#6a6a6a'][(h >> 3) % 4], hat = g.name === 'Tiglath-Pileser' ? 3 : (h >> 5) % 3;
+    return '<svg viewBox="0 0 40 48"><rect width="40" height="48" fill="#22335c"/><rect width="40" height="48" fill="url(#gport)"/><path d="M2 48q2-12 18-12t18 12z" fill="' + col + '"/><path d="M13 37l7 5 7-5" fill="none" stroke="#fff3c4" stroke-width="1.2"/>' +
+      '<path d="M10.5 16q-2.5 11 1.5 17h16q4-6 1.5-17z" fill="' + hair + '"/><ellipse cx="20" cy="20" rx="8" ry="9.5" fill="' + skin + '"/><ellipse cx="20" cy="20" rx="8" ry="9.5" fill="url(#sh)" opacity=".5"/>' +
+      '<path d="M12 21q0 17 8 19q8-2 8-19q-3 4.5-8 4.5t-8-4.5z" fill="' + hair + '"/><path d="M14 30h12M14.6 33h10.8M16 36h8" stroke="rgba(255,255,255,.22)" stroke-width=".8"/>' +
+      '<circle cx="16.5" cy="18.6" r="1" fill="#1a1008"/><circle cx="23.5" cy="18.6" r="1" fill="#1a1008"/><path d="M14.4 16.4h4.2M21.4 16.4h4.2" stroke="' + hair + '" stroke-width="1.2"/><path d="M20 19v3.6l-1.3.8" fill="none" stroke="rgba(0,0,0,.35)" stroke-width=".8"/>' + HATS(hair)[hat] + '</svg>';
+  }
 
   function build() {
     let h = '<defs>' +
@@ -104,7 +127,10 @@
       '<pattern id="pw" width="12" height="12" patternUnits="userSpaceOnUse"><rect width="12" height="12" fill="#dccb9f"/><path d="M1 8q3-3 6 0M7 3q2-2 4 0" fill="none" stroke="#c4af7d" stroke-width=".7"/></pattern>' +
       '<pattern id="pm" width="16" height="11" patternUnits="userSpaceOnUse"><path d="M2 9l3.5-6 3.5 6M5.5 3l1.2 2.8" fill="none" stroke="rgba(40,25,10,.3)"/></pattern>' +
       '<radialGradient id="glow"><stop offset="0" stop-color="#fff" stop-opacity=".9"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient>';
-    for (const t in ICONS) h += '<symbol id="i-' + t + '" viewBox="0 0 12 12">' + ICONS[t] + '</symbol>';
+    for (const t in ICONS) h += '<symbol id="i-' + t + '" viewBox="0 0 12 12">' + ICONS[t] + '</symbol><symbol id="m-' + t + '" viewBox="0 0 14 16" overflow="visible">' + MINI[t] + '</symbol>';
+    h += '<linearGradient id="sh" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#fff" stop-opacity=".38"/><stop offset=".5" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".42"/></linearGradient>' +
+      '<radialGradient id="shr" cx=".35" cy=".3" r=".8"><stop offset="0" stop-color="#fff" stop-opacity=".55"/><stop offset=".6" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".4"/></radialGradient>' +
+      '<linearGradient id="gport" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".18"/><stop offset="1" stop-color="#000" stop-opacity=".35"/></linearGradient>';
     h += '</defs><rect width="1200" height="700" fill="url(#gsea)"/><rect width="1200" height="700" fill="url(#pwv)"/>';
     let lab = '', mt = '', coast = '';
     for (const p of S.provs) {
@@ -138,11 +164,11 @@
   }
 
   function armyXY(a, idx) {
-    const p = S.provs[a.prov]; let x = p.x, y = p.y - 7 - idx * 29;
+    const p = S.provs[a.prov]; let x = p.x, y = p.y - 5 - idx * 40;
     if (a.path.length && !(a.inCombat && !a.retreating)) {
-      const d = S.provs[a.path[0]], need = (d.mtn ? 9 : 6) / S.facs[a.owner].mods.speed * (a.retreating ? 0.6 : 1);
+      const d = S.provs[a.path[0]], need = (d.mtn ? 9 : 6) / S.facs[a.owner].mods.speed / (a.gen.trait === 'march' ? 1.25 : 1) * (a.retreating ? 0.6 : 1);
       const f = Math.max(0, Math.min(1, (a.prog + (speed && !modal ? acc : 0)) / need));
-      x += (d.x - p.x) * f; y = p.y - 7 + (d.y - p.y) * f - idx * 29 * (1 - f);
+      x += (d.x - p.x) * f; y = p.y - 5 + (d.y - p.y) * f - idx * 40 * (1 - f);
     }
     return [x, y];
   }
@@ -150,15 +176,15 @@
     const sides = {};
     for (const a of list) { const s = sides[a.owner] = sides[a.owner] || { o: a.owner, n: 0, men: { spear: 0, bow: 0, cav: 0, char: 0, ram: 0 } }; s.n += G.total(a); for (const t in s.men) s.men[t] += a.men[t]; }
     const arr = Object.values(sides).sort((x, y) => (y.o === ME) - (x.o === ME)), L = arr[0], R = arr[1]; if (!R) return '';
-    let h = '<g transform="translate(' + p.x + ',' + (p.y + 37) + ')"><rect x="-42" y="-18" width="84" height="37" rx="4" fill="rgba(15,8,2,.7)" stroke="#d21f1f" stroke-width="1.1"/>';
+    let h = '<g transform="translate(' + p.x + ',' + (p.y + 37) + ')"><rect x="-42" y="-18" width="84" height="37" rx="4" fill="rgba(226,205,160,.92)" stroke="#d21f1f" stroke-width="1.1"/>';
     [L, R].forEach((s, si) => {
       const dir = si ? -1 : 1, col = S.facs[s.o].color; let front = 0, back = 0;
       ['spear', 'cav', 'char', 'bow', 'ram'].filter(t => s.men[t] >= 50).forEach((t, i) => {
         const fast = t === 'cav' || t === 'char', rear = t === 'bow' || t === 'ram', ph = now / (fast ? 240 : 170) + i * 1.7 + si;
         const row = rear ? back++ : front++;
         const x = -dir * (rear ? 33 : 13 + (row % 2) * 9) + dir * (rear ? 0 : fast ? Math.max(0, Math.sin(ph)) * 10 : Math.sin(ph) * 2.2), y = rear ? -8 + row * 12 : -10 + row * 9;
-        h += '<circle cx="' + x.toFixed(1) + '" cy="' + y + '" r="4.5" fill="' + col + '" stroke="#fff" stroke-width=".6"/><use class="ic" href="#i-' + t + '" x="' + (x - 3.3).toFixed(1) + '" y="' + (y - 3.3) + '" width="6.6" height="6.6"/>';
-        if (t === 'bow') for (let k = 0; k < 3; k++) { const v = (now / 650 + k / 3 + si * 0.5) % 1, ax = -dir * 31 + dir * 60 * v, ay = y - Math.sin(Math.PI * v) * 14; h += '<line x1="' + ax.toFixed(1) + '" y1="' + ay.toFixed(1) + '" x2="' + (ax - dir * 4.5).toFixed(1) + '" y2="' + (ay + Math.cos(Math.PI * v) * 3).toFixed(1) + '" stroke="#fff" stroke-width=".9"/>'; }
+        h += '<g transform="translate(' + x.toFixed(1) + ',' + y + ') scale(' + dir + ',1)"><ellipse cx="0" cy="5.6" rx="4.6" ry="1.4" fill="rgba(0,0,0,.45)"/><use href="#m-' + t + '" x="-5" y="-6" width="10" height="11.5" style="color:' + col + '"/></g>';
+        if (t === 'bow') for (let k = 0; k < 3; k++) { const v = (now / 650 + k / 3 + si * 0.5) % 1, ax = -dir * 31 + dir * 60 * v, ay = y - Math.sin(Math.PI * v) * 14; h += '<line x1="' + ax.toFixed(1) + '" y1="' + ay.toFixed(1) + '" x2="' + (ax - dir * 4.5).toFixed(1) + '" y2="' + (ay + Math.cos(Math.PI * v) * 3).toFixed(1) + '" stroke="#1a1008" stroke-width=".9"/>'; }
       });
     });
     h += '<path d="M0-4l1.2 2.8 2.8 1.2-2.8 1.2L0 4l-1.2-2.8L-4 0l2.8-1.2z" fill="#ffd27a" transform="translate(' + (Math.sin(now / 70) * 3).toFixed(1) + ',' + (Math.cos(now / 50) * 7).toFixed(1) + ') scale(' + (0.7 + (Math.floor(now / 90) % 4) * 0.25) + ')"/>';
@@ -175,23 +201,24 @@
     let ar = '';
     for (const it of items) {
       const a = it[0], mine = a.owner === ME, sel = selArmy === a.id, col = S.facs[a.owner].color;
-      const moving = a.path.length && !a.inCombat, bob = moving && speed && !modal ? Math.sin(now / 110 + a.id) * 0.9 : 0;
-      const types = Object.keys(ICONS).filter(t => a.men[t] >= 50);
-      let ic = ''; types.forEach((t, i) => { const cx = -(types.length - 1) * 4.6 + i * 9.2; ic += '<circle cx="' + cx + '" cy="-25.5" r="4.4" fill="rgba(18,11,3,.85)" stroke="' + col + '" stroke-width=".8"/><use href="#i-' + t + '" x="' + (cx - 3.3) + '" y="-28.8" width="6.6" height="6.6"/>'; });
-      ar += '<g class="army ic" data-army="' + a.id + '" data-prov="' + a.prov + '" transform="translate(' + it[1].toFixed(1) + ',' + (it[2] + bob).toFixed(1) + ')">' +
-        (sel ? '<ellipse cx="0" cy="3" rx="' + (24 + Math.sin(now / 200) * 2).toFixed(1) + '" ry="6.5" fill="rgba(255,255,255,.18)" stroke="#fff" stroke-width="1.4"/>' : '') +
-        '<line x1="-19" y1="-21" x2="-19" y2="4" stroke="#24180a" stroke-width="1.6"/><circle cx="-19" cy="-21.5" r="1.5" fill="#f3d584" stroke="none"/>' +
-        '<path d="M-19-20h37l-4.5 6.5 4.5 6.5h-37z" fill="' + (a.retreating ? '#ececec' : col) + '" stroke="' + (mine ? '#fff0b8' : '#170f05') + '" stroke-width="' + (mine ? 1.3 : 0.9) + '"/>' +
-        '<path d="M-19-20h37l-1.4 2h-35.6z" fill="rgba(255,255,255,.25)" stroke="none"/>' +
-        '<text class="n" x="-2" y="-10.3" stroke-linecap="butt">' + fmt(G.total(a)) + '</text>' + ic + (a.retreating ? '<text class="n" x="0" y="-33" style="font-size:7px;letter-spacing:1px">RETREATING</text>' : '') +
-        '<rect x="-18" y="-5.6" width="35" height="2.4" rx="1" fill="rgba(0,0,0,.6)" stroke="none"/><rect x="-18" y="-5.6" width="' + (35 * Math.max(0, a.morale) / 100).toFixed(1) + '" height="2.4" rx="1" fill="' + (a.morale > 50 ? '#7fe07a' : '#f0a030') + '" stroke="none"/></g>';
+      const moving = a.path.length && !a.inCombat;
+      const types = Object.keys(ICONS).filter(t => a.men[t] >= 50), step = moving && speed && !modal;
+      let ic = ''; types.forEach((t, i) => { ic += '<use href="#m-' + t + '" x="' + (-(types.length - 1) * 6.5 + i * 13 - 7) + '" y="' + (-16 - (step ? Math.abs(Math.sin(now / 120 + i * 1.3)) * 1.7 : 0)).toFixed(1) + '" width="14" height="16" style="color:' + col + '"/>'; });
+      const rx = types.length * 6.5 + 5;
+      ar += '<g class="army" data-army="' + a.id + '" data-prov="' + a.prov + '" transform="translate(' + it[1].toFixed(1) + ',' + it[2].toFixed(1) + ')">' +
+        (sel ? '<ellipse cx="0" cy="0" rx="' + (rx + 5 + Math.sin(now / 200) * 2).toFixed(1) + '" ry="6.5" fill="rgba(255,255,255,.2)" stroke="#fff" stroke-width="1.4"/>' : '') +
+        '<ellipse cx="1.5" cy=".8" rx="' + rx + '" ry="3.4" fill="rgba(0,0,0,.38)"/><rect x="' + (-rx - 2) + '" y="-30" width="' + (rx * 2 + 4) + '" height="33" fill="transparent"/>' + ic +
+        '<g transform="translate(0,-13)"><path d="M-17-20h34l-4 5.5 4 5.5h-34z" fill="' + (a.retreating ? '#ececec' : col) + '" stroke="' + (mine ? '#fff0b8' : '#170f05') + '" stroke-width="' + (mine ? 1.3 : 0.9) + '"/>' +
+        '<path d="M-17-20h34l-1.2 1.8h-32.8z" fill="rgba(255,255,255,.28)"/><text class="n" x="-1.5" y="-11.2">' + fmt(G.total(a)) + '</text>' +
+        (a.retreating ? '<text class="n" x="0" y="-23" style="font-size:7px;letter-spacing:1px">RETREATING</text>' : '') +
+        '<rect x="-17" y="-7.6" width="34" height="2.2" rx="1" fill="rgba(0,0,0,.6)"/><rect x="-17" y="-7.6" width="' + (34 * Math.max(0, a.morale) / 100).toFixed(1) + '" height="2.2" rx="1" fill="' + (a.morale > 50 ? '#7fe07a' : '#f0a030') + '"/></g></g>';
     }
     setHTML('ga', ar);
     let fx = '', top = '';
     const sa = S.armies.find(x => x.id === selArmy);
     if (sa && sa.path.length) {
       const q = armyXY(sa, 0), last = S.provs[sa.path[sa.path.length - 1]];
-      fx += '<polyline points="' + q[0].toFixed(1) + ',' + (q[1] + 7).toFixed(1) + ' ' + sa.path.map(i => S.provs[i].x + ',' + S.provs[i].y).join(' ') + '" fill="none" stroke="#fff" stroke-width="2" stroke-dasharray="6 5" stroke-dashoffset="' + (-(now / 60) % 11).toFixed(1) + '" stroke-linecap="round"/>' +
+      fx += '<polyline points="' + q[0].toFixed(1) + ',' + q[1].toFixed(1) + ' ' + sa.path.map(i => S.provs[i].x + ',' + S.provs[i].y).join(' ') + '" fill="none" stroke="#fff" stroke-width="2" stroke-dasharray="6 5" stroke-dashoffset="' + (-(now / 60) % 11).toFixed(1) + '" stroke-linecap="round"/>' +
         '<circle cx="' + last.x + '" cy="' + last.y + '" r="' + (7 + Math.sin(now / 200) * 1.5).toFixed(1) + '" fill="none" stroke="#fff" stroke-width="1.6"/>';
     }
     for (const p of S.provs) {
@@ -255,12 +282,14 @@
   function musterProv() { return selProv !== null && S.provs[selProv].owner === ME ? selProv : S.facs[ME].capital; }
   function drawSide() {
     const f = S.facs[ME]; let h = '';
+    const ch = G.STORY[S.chapter];
+    if (ch) h += '<h3>Chronicle</h3><div class="card"><b class="cz">' + ch.title + '</b><br>' + ch.goal + '<div class="row"><span class="muted">Reward: ' + ch.reward + '</span><span class="btn" data-act="story">Read</span></div></div>';
     const a = S.armies.find(x => x.id === selArmy), p = selProv !== null ? S.provs[selProv] : null;
     if (a) {
       const here = S.provs[a.prov];
       const st = a.retreating ? 'Retreating' : a.inCombat ? 'In battle at ' + here.name : a.path.length ? 'Marching to ' + S.provs[a.path[a.path.length - 1]].name : G.atWar(ME, here.owner) ? 'Besieging ' + here.name : 'Camped at ' + here.name;
       h += '<h3>' + a.name + '</h3><div class="card"><div class="row"><span><b>' + fmt(G.total(a)) + '</b> men</span><span class="muted">' + st + '</span></div>' +
-        '<div>General ' + a.gen.name + ' <span style="color:#f3d584">' + '&#9733;'.repeat(a.gen.skill) + '</span></div><div class="muted">Veterancy ' + Math.round(a.xp) + ' &middot; Morale ' + Math.round(a.morale) + (a.attr ? ' &middot; <span class="bad">attrition</span>' : '') + '</div><div class="bar"><i style="width:' + Math.max(0, a.morale) + '%;background:' + (a.morale > 50 ? '#7fe07a' : '#f0a030') + '"></i></div>' +
+        '<div>General ' + a.gen.name + ' <span style="color:#f3d584">' + '&#9733;'.repeat(a.gen.skill) + '</span></div>' + (G.TRAITS[a.gen.trait] ? '<div class="good">' + G.TRAITS[a.gen.trait].name + ': ' + G.TRAITS[a.gen.trait].desc + '</div>' : '') + '<div class="muted">Veterancy ' + Math.round(a.xp) + ' &middot; Morale ' + Math.round(a.morale) + (a.attr ? ' &middot; <span class="bad">attrition</span>' : '') + '</div><div class="bar"><i style="width:' + Math.max(0, a.morale) + '%;background:' + (a.morale > 50 ? '#7fe07a' : '#f0a030') + '"></i></div>' +
         Object.keys(G.UNITS).filter(t => a.men[t] >= 1).map(t => '<div>' + uiIcon(t) + G.UNITS[t].name + ' <b>' + Math.round(a.men[t]) + '</b></div>').join('') +
         '<div style="margin-top:8px;line-height:2.1">' + (G.atWar(ME, here.owner) && !a.inCombat && !a.path.length ? '<span class="btn" data-act="storm">Storm the walls</span> ' : '') + '<span class="btn" data-act="split">Split</span> <span class="btn" data-act="merge">Merge</span> <span class="btn" data-act="halt">Halt</span> <span class="btn" data-act="desel">Close</span></div></div>';
     } else if (p) {
@@ -291,6 +320,16 @@
     }
     setHTML('side', h);
   }
+  function drawGens() {
+    let h = '';
+    for (const a of S.armies) {
+      if (a.owner !== ME) continue; const here = S.provs[a.prov], T = G.TRAITS[a.gen.trait];
+      const st = a.retreating ? 'Retreating' : a.inCombat ? 'Fighting at ' + here.name : a.path.length ? 'To ' + S.provs[a.path[a.path.length - 1]].name : G.atWar(ME, here.owner) ? 'Besieging ' + here.name : 'At ' + here.name;
+      h += '<div class="gen' + (selArmy === a.id ? ' on' : '') + (a.inCombat ? ' fight' : '') + '" data-act="army" data-v="' + a.id + '">' + portrait(a.gen, S.facs[ME].color) +
+        '<div><b>' + a.gen.name + '</b> <span style="color:#f3d584">' + '&#9733;'.repeat(a.gen.skill) + '</span><br><span class="muted">' + (T ? T.name : '') + '</span><br>' + a.name + ' &middot; <b>' + fmt(G.total(a)) + '</b><br><span class="' + (a.inCombat ? 'bad' : 'muted') + '">' + st + '</span></div></div>';
+    }
+    setHTML('gens', h || '<div class="muted" style="padding:8px">You have no armies. Raise troops in the panel on the left.</div>');
+  }
   function tipFor(t) {
     const pg = t.closest && t.closest('[data-prov]'); if (!pg) return '';
     const p = S.provs[+pg.dataset.prov], o = S.facs[p.owner];
@@ -315,7 +354,7 @@
   }
   function drawPanels() {
     if (selArmy !== null && !S.armies.some(a => a.id === selArmy)) selArmy = null;
-    drawProvs(); drawTop(); drawSide(); listen();
+    drawProvs(); drawTop(); drawSide(); drawGens(); listen();
     setHTML('log', S.log.slice(-5).map(l => '<div class="' + l.kind + '">' + l.text + '</div>').join(''));
     setHTML('hint', Date.now() < hintUntil ? hint : DEFAULT_HINT);
     if (!modal && S.events.length) {
@@ -349,6 +388,8 @@
     if (name === 'speed') speed = +v;
     else if (name === 'mute') { muted = !muted; if (master) master.gain.value = muted ? 0 : 0.6; }
     else if (name === 'music') music = !music;
+    else if (name === 'story') { if (G.STORY[S.chapter]) showModal(G.chapterEvent(G.STORY[S.chapter])); return; }
+    else if (name === 'army') { selArmy = +v; selProv = null; snd = 'select'; const q = S.armies.find(x => x.id === selArmy); if (q && vb.w < 1190) { vb.x = S.provs[q.prov].x - vb.w / 2; vb.y = S.provs[q.prov].y - vb.h / 2; applyVB(); } }
     else if (name === 'tribute') { const r = G.demandTribute(v); if (r) { say(r); snd = 'error'; } else snd = 'chime'; }
     else if (name === 'build') snd = G.build(selProv, v) ? 'build' : 'error';
     else if (name === 'storm' && a) { if (G.storm(a)) { snd = 'storm'; const q = S.provs[a.prov]; floaters.push({ x: q.x, y: q.y, t: performance.now(), text: 'Assault!', c: '#ffb38a' }); } else { say('The men need ten days before another assault.'); snd = 'error'; } }
@@ -407,7 +448,7 @@
   });
 
   build();
-  $('legend').innerHTML = '<b class="cz">Troops</b><br>' + Object.keys(ICONS).map(t => uiIcon(t) + G.UNITS[t].name).join('<br>') + '<br><span class="muted">Red box: battle. Orange ring: siege.<br>A broken army scatters for good.<br>Order a fighting army away to retreat.</span>';
+  $('legend').innerHTML = '<b class="cz">Troops</b><br>' + Object.keys(ICONS).map(t => uiIcon(t) + G.UNITS[t].name).join('<br>') + '<br><span class="muted">Red box: battle. Orange ring: siege.<br>A broken army scatters for good.<br>Order a fighting army away to retreat.<br>Your generals are along the bottom.</span>';
   try { const sv = localStorage.getItem(SAVE), dd = sv ? JSON.parse(sv).day : 0; if (dd > 30) showModal({ title: 'Resume your reign?', text: 'A saved campaign was found, last played on ' + G.dateStr(dd) + '. The game saves itself every month.', choices: [{ label: 'Continue campaign', ui: 'load' }, { label: 'New campaign', ui: 'new' }] }); } catch (e) { /* no save */ }
   draw();
   let last = performance.now();
