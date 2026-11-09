@@ -18,7 +18,8 @@
     JUD: ['Judah', '#7fa83c', 'Jerusalem'],
     EDM: ['Edom and Moab', '#a36a50', 'Bozrah'],
     EGY: ['Egypt', '#cdb64a', 'Memphis'],
-    ARB: ['Qedarite Arabs', '#b59a78', 'Dumah']
+    ARB: ['Qedarite Arabs', '#b59a78', 'Dumah'],
+    REB: ['Rebels', '#3b3b3b', null]
   };
   const ALLIES = [['URA', 'HAT'], ['BAB', 'ELA'], ['ARM', 'ISR']];
   const START_MEN = { BAB: 14000, ELA: 12000, URA: 17000, MED: 8000, MAN: 5000, HAT: 10000, PHR: 10000, ARM: 9000, PHO: 4000, ISR: 5000, JUD: 4000, EDM: 3000, EGY: 15000, ARB: 4000 };
@@ -102,7 +103,8 @@
   const provByName = n => S.provs.find(p => p.name === n);
   const countProvs = fid => S.provs.filter(p => p.owner === fid).length;
   const menOf = fid => S.armies.reduce((s, a) => s + (a.owner === fid && !a.dead ? total(a) : 0), 0);
-  const siegeNeed = p => 12 + p.fort * 14;
+  const siegeNeed = p => 18 + p.fort * 20;
+  const isWinter = () => { const m = Math.floor(S.day % 360 / 30); return m >= 8 && m <= 10; };
   function log(text, kind) { S.log.push({ day: S.day, text, kind: kind || '' }); if (S.log.length > 60) S.log.shift(); }
   function dateStr(day) { const d = day === undefined ? S.day : day; return (d % 30 + 1) + ' ' + MONTHS[Math.floor(d % 360 / 30)] + ', ' + (745 - Math.floor(d / 360)) + ' BC'; }
 
@@ -129,8 +131,9 @@
     }
   }
 
+  const GEN = ['Shamshi-ilu', 'Bel-dan', 'Nabu-etir', 'Ashur-daninanni', 'Sin-taklak', 'Ninurta-ilaya', 'Marduk-remanni', 'Nergal-eresh', 'Bel-emuranni', 'Mannu-ki-Ashur', 'Sharru-emuranni', 'Tab-shar-Ashur', 'Ashur-shallimanni', 'Nabu-dainanni', 'Adad-issiya', 'Bel-harran-shadua'];
   function mkArmy(owner, prov, men, name) {
-    const a = { id: S.nextId++, owner, prov, name, men: Object.assign({ spear: 0, bow: 0, cav: 0, char: 0, ram: 0 }, men), morale: 100, path: [], prog: 0, retreating: false, inCombat: false, dead: false };
+    const a = { id: S.nextId++, owner, prov, name, men: Object.assign({ spear: 0, bow: 0, cav: 0, char: 0, ram: 0 }, men), morale: 100, path: [], prog: 0, retreating: false, inCombat: false, dead: false, xp: 0, stormCd: 0, attr: false, gen: { name: GEN[Math.floor(Math.random() * GEN.length)], skill: 1 + Math.floor(Math.pow(Math.random(), 1.8) * 5) } };
     S.armies.push(a); return a;
   }
 
@@ -139,24 +142,25 @@
       id: i, name: d[0], x: (d[1] - 30) * 50, y: (41 - d[2]) * 50,
       type: d[3] === 'sea' ? 'sea' : d[3] === 'waste' ? 'waste' : 'land',
       owner: (d[3] === 'sea' || d[3] === 'waste') ? null : d[3],
-      silver: d[4] || 0, mp: d[5] || 0, fort: d[6] || 0, mtn: !!d[7], siege: 0, sieger: null, adj: [], poly: []
+      silver: d[4] || 0, mp: d[5] || 0, fort: d[6] || 0, mtn: !!d[7], siege: 0, sieger: null, adj: [], poly: [], unrest: 0, bld: { m: 0, g: 0 }, core: null
     }));
+    for (const p of provs) p.core = p.owner;
     buildMap(provs);
-    S = { day: 0, provs, facs: {}, armies: [], nextId: 1, log: [], events: [], over: null, won: false, auto: false, levy: 1 };
+    S = { day: 0, provs, facs: {}, armies: [], nextId: 1, log: [], events: [], over: null, won: false, auto: false, levy: 1, nextEvent: 80 };
     for (const id in FDEF) {
       const d = FDEF[id];
       S.facs[id] = {
-        id, name: d[0], color: d[1], capital: provs.find(p => p.name === d[2]).id, silver: id === PLAYER ? 300 : 150, mp: id === PLAYER ? 12000 : 6000,
+        id, name: d[0], color: d[1], capital: d[2] ? provs.find(p => p.name === d[2]).id : null, tributary: false, silver: id === PLAYER ? 300 : 150, mp: id === PLAYER ? 12000 : 6000,
         war: {}, alive: true, queue: [], edict: null, done: {}, mods: { atk: 1, def: 1, silver: 1, mp: 1, speed: 1, siege: 1, cav: 1 }, start: 0
       };
     }
     for (const id in S.facs) {
       const f = S.facs[id]; f.start = countProvs(id);
-      if (id === PLAYER) continue;
+      if (id === PLAYER || id === 'REB') continue;
       const n = START_MEN[id];
       mkArmy(id, f.capital, { spear: n * 0.55, bow: n * 0.3, cav: n * 0.12, char: n * 0.03 }, 'Host of ' + f.name);
     }
-    mkArmy(PLAYER, provByName('Kalhu').id, { spear: 8000, bow: 5000, cav: 1500, char: 400, ram: 300 }, 'Royal Army');
+    mkArmy(PLAYER, provByName('Kalhu').id, { spear: 8000, bow: 5000, cav: 1500, char: 400, ram: 300 }, 'Royal Army').gen = { name: 'Tiglath-Pileser', skill: 4 };
     mkArmy(PLAYER, provByName('Harran').id, { spear: 5000, bow: 3000, cav: 500 }, 'Army of the West');
     S.events.push({
       title: 'The Revolt at Kalhu',
@@ -189,7 +193,7 @@
   function rawPower(a) { let s = 0; for (const t in UNITS) s += a.men[t] * UNITS[t].atk; return s; }
   function power(a, p) {
     let s = 0; for (const t in UNITS) s += a.men[t] * UNITS[t].atk * (t === 'char' && p.mtn ? 0.4 : 1);
-    return s * S.facs[a.owner].mods.atk * (0.5 + a.morale / 200);
+    return s * S.facs[a.owner].mods.atk * (0.5 + a.morale / 200) * (1 + 0.05 * a.gen.skill + a.xp / 400);
   }
   function tough(b, p) {
     let s = 0; for (const t in UNITS) s += b.men[t] * UNITS[t].def;
@@ -213,7 +217,7 @@
     const pend = new Map();
     for (const a of act) {
       const en = act.filter(b => atWar(a.owner, b.owner)); if (!en.length) continue;
-      a.inCombat = true; a.foes = en;
+      a.inCombat = true; a.foes = en; a.xp = Math.min(100, a.xp + 0.4);
       const pw = power(a, p), tot = en.reduce((s, b) => s + total(b), 0);
       for (const b of en) pend.set(b, (pend.get(b) || 0) + pw * 0.01 * rnd(0.7, 1.3) * (total(b) / tot) / tough(b, p));
     }
@@ -232,8 +236,8 @@
     }
   }
   function capitulate(old, victor) {
-    const f = S.facs[old]; f.alive = false; f.queue = [];
-    for (const p of S.provs) if (p.owner === old) { p.owner = victor; p.siege = 0; p.sieger = null; }
+    const f = S.facs[old]; f.alive = false; f.queue = []; f.tributary = false;
+    for (const p of S.provs) if (p.owner === old) { p.owner = victor; p.siege = 0; p.sieger = null; p.unrest = victor === p.core ? 0 : 50; }
     for (const a of S.armies) if (a.owner === old) a.dead = true;
     for (const id in S.facs) delete S.facs[id].war[old];
     f.war = {};
@@ -242,8 +246,11 @@
     else log(f.name + ' has been conquered by ' + S.facs[victor].name + '.');
   }
   function capture(p, o) {
-    const old = p.owner; p.owner = o; p.siege = 0; p.sieger = null;
-    if (o === PLAYER) log(p.name + ' has fallen to our army.', 'good');
+    const old = p.owner;
+    if (o === 'REB' && p.core !== old && p.core !== 'REB' && S.facs[p.core].alive) { o = p.core; for (const a of S.armies) if (a.owner === 'REB' && a.prov === p.id) a.dead = true; }
+    p.owner = o; p.siege = 0; p.sieger = null; p.unrest = o === p.core ? 0 : 70;
+    const loot = p.silver * 5; S.facs[o].silver += loot;
+    if (o === PLAYER) log(p.name + ' has fallen to our army. Plunder: ' + loot + ' silver.', 'good');
     else if (old === PLAYER) log(p.name + ' has fallen to ' + S.facs[o].name + '.', 'bad');
     if (S.facs[old].capital === p.id) capitulate(old, o);
     checkWin();
@@ -253,10 +260,11 @@
     if (a === b || atWar(a, b) || !S.facs[a].alive || !S.facs[b].alive) return;
     const set = (x, y) => { S.facs[x].war[y] = S.day; S.facs[y].war[x] = S.day; };
     set(a, b);
+    if (a === PLAYER && S.facs[b].tributary) { S.facs[b].tributary = false; log('We have broken our oath to ' + S.facs[b].name + '.', 'bad'); }
     const joined = [];
     for (const pair of ALLIES) {
       const ally = pair[0] === b ? pair[1] : pair[1] === b ? pair[0] : null;
-      if (ally && ally !== a && S.facs[ally].alive && !atWar(a, ally)) { set(a, ally); joined.push(S.facs[ally].name); }
+      if (ally && ally !== a && S.facs[ally].alive && !atWar(a, ally) && !(a === PLAYER && S.facs[ally].tributary)) { set(a, ally); joined.push(S.facs[ally].name); }
     }
     const extra = joined.length ? ' ' + joined.join(' and ') + ' joins the war.' : '';
     if (a === PLAYER) log('We have declared war on ' + S.facs[b].name + '.' + extra);
@@ -304,7 +312,7 @@
   function split(a) {
     if (total(a) < 2000 || a.inCombat || a.retreating) return null;
     const men = {}; for (const t in a.men) { men[t] = a.men[t] / 2; a.men[t] /= 2; }
-    const b = mkArmy(a.owner, a.prov, men, a.name + ' II'); b.morale = a.morale; return b;
+    const b = mkArmy(a.owner, a.prov, men, a.name + ' II'); b.morale = a.morale; b.xp = a.xp; return b;
   }
   function merge(a) {
     let n = 0;
@@ -316,8 +324,11 @@
     S.armies = S.armies.filter(x => !x.dead); return n;
   }
   function econ(f) {
-    let inc = 0, mp = 0; for (const p of S.provs) if (p.owner === f.id) { inc += p.silver; mp += p.mp; }
-    return { inc: Math.round(inc * f.mods.silver), up: Math.round(menOf(f.id) * 0.002), mp: Math.round(mp * f.mods.mp) };
+    const base = g => { let v = 0; for (const p of S.provs) if (p.owner === g.id) v += (p.silver + p.bld.m * 6) * (1 - p.unrest / 100); return v * g.mods.silver; };
+    let inc = base(f), mp = 0, trib = 0; for (const p of S.provs) if (p.owner === f.id) mp += (p.mp + p.bld.g * 300) * (1 - p.unrest / 100);
+    if (f.tributary) inc *= 0.65;
+    if (f.id === PLAYER) for (const id in S.facs) if (S.facs[id].tributary && S.facs[id].alive) trib += base(S.facs[id]) * 0.35;
+    return { inc: Math.round(inc + trib), trib: Math.round(trib), up: Math.round(menOf(f.id) * 0.002), mp: Math.round(mp * f.mods.mp) };
   }
 
   function ai(f) {
@@ -345,7 +356,7 @@
   }
   function aiRecruit(f) {
     let men = menOf(f.id) + f.queue.reduce((s, q) => s + UNITS[q.type].men, 0);
-    const cap = countProvs(f.id) * 3000 + 3000;
+    const cap = (countProvs(f.id) * 3000 + 3000) * (Object.keys(f.war).length ? 1.4 : 1);
     for (let n = 0; n < 3 && men < cap; n++) {
       const r = Math.random(), t = r < 0.45 ? 'spear' : r < 0.75 ? 'bow' : r < 0.9 ? 'cav' : r < 0.95 ? 'char' : 'ram';
       if (!recruit(f.id, t)) break; men += UNITS[t].men;
@@ -353,7 +364,7 @@
   }
   function monthly() {
     for (const id in S.facs) {
-      const f = S.facs[id]; if (!f.alive) continue;
+      const f = S.facs[id]; if (!f.alive || id === 'REB') continue;
       const e = econ(f); f.silver += e.inc - e.up; f.mp = Math.min(60000, f.mp + e.mp);
       if (f.silver < 0) {
         f.silver = 0; for (const a of S.armies) if (a.owner === id) a.morale = Math.max(5, a.morale - 15);
@@ -364,12 +375,102 @@
     if (S.day > 240) {
       const ours = menOf(PLAYER);
       for (const id in S.facs) {
-        const f = S.facs[id]; if (id === PLAYER || !f.alive || atWar(id, PLAYER)) continue;
+        const f = S.facs[id]; if (id === PLAYER || id === 'REB' || f.tributary || !f.alive || atWar(id, PLAYER)) continue;
         const borders = S.provs.some(p => p.owner === id && p.adj.some(q => S.provs[q].owner === PLAYER));
         if (borders && menOf(id) > ours && Math.random() < 0.04) declareWar(id, PLAYER);
       }
     }
+    world();
   }
+
+  const BUILD = { m: { name: 'Market', cost: 120, max: 2, desc: '+6 silver' }, g: { name: 'Granary', cost: 90, max: 2, desc: '+300 manpower' }, w: { name: 'Walls', cost: 100, max: 4, desc: '+1 walls' } };
+  function build(pid, k) {
+    const p = S.provs[pid], f = S.facs[PLAYER], b = BUILD[k]; if (!p || p.owner !== PLAYER || !b) return false;
+    if ((k === 'w' ? p.fort : p.bld[k]) >= b.max || f.silver < b.cost) return false;
+    f.silver -= b.cost; if (k === 'w') p.fort++; else p.bld[k]++; return true;
+  }
+  function storm(a) {
+    const p = S.provs[a.prov];
+    if (a.inCombat || a.retreating || a.path.length || !atWar(a.owner, p.owner) || p.sieger !== a.owner || a.stormCd > S.day) return false;
+    const loss = 0.04 + 0.03 * p.fort; for (const t in a.men) a.men[t] *= 1 - loss;
+    a.morale = Math.max(10, a.morale - 20); a.stormCd = S.day + 10; p.siege += siegeNeed(p) * 0.35;
+    if (a.owner === PLAYER) log(a.name + ' storms the walls of ' + p.name + '. ' + Math.round(loss * 100) + '% of the men fall.');
+    if (p.siege >= siegeNeed(p)) capture(p, a.owner);
+    S.armies = S.armies.filter(x => !x.dead); return true;
+  }
+  function demandTribute(fid) {
+    const f = S.facs[fid]; if (!f.alive) return 'They are gone.'; if (f.tributary) return f.name + ' already pays tribute.';
+    const theirs = menOf(fid), ours = menOf(PLAYER), war = atWar(PLAYER, fid);
+    const ok = war ? (S.day - S.facs[PLAYER].war[fid] >= 60 && (countProvs(fid) < f.start || theirs < ours * 0.5)) : theirs * 3 < ours;
+    if (!ok) return war ? f.name + ' will not bow yet. Break their army or take a province first.' : f.name + ' laughs at your envoys. Your army must be three times theirs.';
+    if (war) makePeace(PLAYER, fid);
+    f.tributary = true; log(f.name + ' kisses the royal feet and will pay tribute every month.', 'good'); return null;
+  }
+  function revolt(p) {
+    const n = 2500 + Math.random() * 3000;
+    mkArmy('REB', p.id, { spear: n * 0.7, bow: n * 0.3 }, 'Rebels of ' + p.name);
+    S.facs.REB.war[p.owner] = S.day; S.facs[p.owner].war.REB = S.day;
+    if (p.owner === PLAYER) log('Revolt in ' + p.name + '! Rebels are besieging the city.', 'bad');
+  }
+  function randomEvent() {
+    const f = S.facs[PLAYER], mine = S.armies.filter(a => a.owner === PLAYER);
+    const big = mine.slice().sort((a, b) => total(b) - total(a))[0];
+    const outer = S.provs.filter(p => p.owner === PLAYER && p.id !== f.capital), X = outer[Math.floor(Math.random() * outer.length)];
+    const all = fn => { for (const a of S.armies) if (a.owner === PLAYER) fn(a); };
+    const pool = [
+      { title: 'An Eclipse of the Sun', text: 'The sun went dark at midday over Ashur. The astrologers say the omen points at the king himself, and the soldiers are whispering.', choices: [
+        { label: 'Enthrone a substitute king (80 silver)', fx: () => { if (f.silver >= 80) { f.silver -= 80; all(a => { a.morale = Math.min(100, a.morale + 15); }); log('The omen is turned aside. The army takes heart.', 'good'); } else { all(a => { a.morale = Math.max(10, a.morale - 25); }); log('The treasury could not pay for the ritual. Fear spreads.', 'bad'); } } },
+        { label: 'Ignore the omen', fx: () => { all(a => { a.morale = Math.max(10, a.morale - 25); }); log('Fear spreads through the camps.', 'bad'); } }] },
+      { title: 'Caravan from the Sea Coast', text: 'Merchants of Tyre and Arwad ask leave to trade in the heartland. They offer the king a gift of his choosing.', choices: [
+        { label: 'Take their silver (+150)', fx: () => { f.silver += 150; } },
+        { label: 'Take their engineers (free siege train)', fx: () => { muster(f, { type: 'ram', prov: null }); } }] },
+      { title: 'A Bountiful Harvest', text: 'The Tigris flooded gently this year and the barley stands taller than a man.', choices: [
+        { label: 'Fill the granaries (+5000 manpower)', fx: () => { f.mp += 5000; } },
+        { label: 'Sell the surplus (+120 silver)', fx: () => { f.silver += 120; } }] },
+      { title: 'Horse Traders of the Zagros', text: 'Mountain chiefs have driven a herd of fine horses down to the plain, with riders who know them.', choices: [
+        { label: 'Buy the herd (60 silver, 500 cavalry)', fx: () => { if (f.silver >= 60) { f.silver -= 60; muster(f, { type: 'cav', prov: null }); } else log('We could not afford the horses.', 'bad'); } },
+        { label: 'Send them away', fx: () => { } }] },
+      { title: 'Scribes of Babylon', text: 'Scholars fleeing the troubles in the south offer their service to the king of Assyria.', choices: [
+        { label: 'Set them to drafting edicts', fx: () => { if (f.edict) { f.edict.left = Math.max(1, f.edict.left - 40); log('The scribes speed the current edict by 40 days.', 'good'); } else { f.silver += 60; log('With no edict in hand, the scribes tidy the tax rolls. +60 silver.'); } } },
+        { label: 'Have them school the generals', fx: () => { all(a => { a.xp = Math.min(100, a.xp + 15); }); log('Every army gains veterancy.', 'good'); } }] }
+    ];
+    if (X) pool.push({ title: 'A Governor Plots', text: 'The governor of ' + X.name + ' has been hoarding grain and hiring guards. Your spies say he means to make himself king.', choices: [
+      { label: 'Buy his loyalty (100 silver)', fx: () => { if (f.silver >= 100) f.silver -= 100; else { X.unrest = Math.min(100, X.unrest + 55); log('We could not pay. ' + X.name + ' seethes.', 'bad'); } } },
+      { label: 'Send the executioner', fx: () => { X.unrest = Math.min(100, X.unrest + 55); log('The governor is flayed. ' + X.name + ' seethes with unrest.', 'bad'); } }] });
+    if (big) {
+      pool.push({ title: 'Fever in the Camp', text: 'A sickness is moving through the tents of ' + big.name + '. The physicians beg the king to halt.', choices: [
+        { label: 'Burn the tents and rest (40 silver)', fx: () => { f.silver = Math.max(0, f.silver - 40); for (const t in big.men) big.men[t] *= 0.95; } },
+        { label: 'March on regardless', fx: () => { for (const t in big.men) big.men[t] *= 0.86; big.morale = Math.max(10, big.morale - 10); log(big.name + ' loses many men to fever.', 'bad'); } }] });
+      pool.push({ title: 'A Veteran Asks to Serve', text: 'A scarred captain of the old king has come to court. He asks for a command.', choices: [
+        { label: 'Give him ' + big.name, fx: () => { big.gen = { name: GEN[Math.floor(Math.random() * GEN.length)], skill: Math.min(5, big.gen.skill + 2) }; log(big.gen.name + ' takes command of ' + big.name + '.', 'good'); } },
+        { label: 'Feast him and send him home', fx: () => { all(a => { a.morale = Math.min(100, a.morale + 10); }); } }] });
+    }
+    S.events.push(pool[Math.floor(Math.random() * pool.length)]);
+  }
+  function world() {
+    const by = group();
+    for (const p of S.provs) {
+      if (p.type !== 'land' || p.owner === 'REB' || p.unrest <= 0) continue;
+      const garr = (by.get(p.id) || []).some(a => a.owner === p.owner);
+      p.unrest = Math.max(0, p.unrest - (garr ? 7 : 2));
+      if (!garr && p.unrest > 35 && S.facs[p.owner].capital !== p.id && Math.random() < p.unrest / 900) revolt(p);
+    }
+    const R = S.facs.REB;
+    if (!S.armies.some(a => a.owner === 'REB') && !countProvs('REB')) { for (const k in R.war) delete S.facs[k].war.REB; R.war = {}; }
+    for (const id in S.facs) {
+      const f = S.facs[id]; if (id === PLAYER || id === 'REB' || !f.alive) continue;
+      for (const o of Object.keys(f.war)) if (o !== PLAYER && o !== 'REB' && S.day - f.war[o] > 420) { makePeace(id, o); log(f.name + ' and ' + S.facs[o].name + ' have made peace.'); }
+      if (S.day > 300 && !Object.keys(f.war).length && !f.tributary && Math.random() < 0.02) {
+        const mine = menOf(id), c = Object.keys(S.facs).filter(o => o !== id && o !== PLAYER && o !== 'REB' && S.facs[o].alive && allyOf(id) !== o && menOf(o) < mine * 0.8 &&
+          S.provs.some(p => p.owner === id && p.adj.some(q => S.provs[q].owner === o)));
+        if (c.length) { const o = c[Math.floor(Math.random() * c.length)]; declareWar(id, o); log(f.name + ' has gone to war with ' + S.facs[o].name + '.'); }
+      }
+      if (f.tributary && menOf(id) > menOf(PLAYER) * 0.9 && Math.random() < 0.08) { f.tributary = false; log(f.name + ' has stopped paying tribute.', 'bad'); }
+    }
+    if (!S.auto && S.day >= S.nextEvent) { randomEvent(); S.nextEvent = S.day + 140 + Math.floor(Math.random() * 120); }
+  }
+  function save() { return JSON.stringify(S, (k, v) => (k === 'foes' || k === 'events') ? undefined : v); }
+  function load(str) { S = JSON.parse(str); S.events = []; return S; }
 
   function tick() {
     if (S.over === 'lose') return;
@@ -387,6 +488,11 @@
     for (const a of S.armies) a.inCombat = false;
     for (const [pid, list] of group()) combat(S.provs[pid], list);
     S.armies = S.armies.filter(a => !a.dead);
+    const winter = isWinter();
+    for (const a of S.armies) {
+      const p = S.provs[a.prov]; a.attr = p.owner !== a.owner && ((winter && p.mtn) || total(a) > 20000);
+      if (a.attr) for (const t in a.men) a.men[t] *= 0.9985;
+    }
     for (const a of S.armies) {
       if (!a.path.length) { if (!a.inCombat) a.morale = Math.min(100, a.morale + 1.2); continue; }
       if (a.inCombat && !a.retreating) continue;
@@ -417,12 +523,12 @@
     if (S.over === 'lose') return;
     if (S.day % 5 === 0) for (const id in S.facs) { const f = S.facs[id]; if (f.alive && (id !== PLAYER || S.auto)) ai(f); }
     if (S.day % 30 === 0) monthly();
-    if (S.day === 120 && S.facs.URA.alive && !atWar('URA', PLAYER)) declareWar('URA', PLAYER);
+    if (S.day === 120 && S.facs.URA.alive && !S.facs.URA.tributary && !atWar('URA', PLAYER)) declareWar('URA', PLAYER);
   }
 
   root.Game = {
     W, H, PLAYER, UNITS, EDICTS, GOALS, ALLIES, PDEF,
-    newGame, tick, order, halt, recruit, unitCost, startEdict, declareWar, proposePeace, split, merge, econ,
+    newGame, tick, BUILD, build, storm, demandTribute, save, load, isWinter, order, halt, recruit, unitCost, startEdict, declareWar, proposePeace, split, merge, econ,
     reach: (fid, from) => bfs(fid, from).dist, total, menOf, countProvs, atWar, canEnter, findPath, siegeNeed, dateStr, provByName, allyOf,
     get S() { return S; }
   };

@@ -13,42 +13,78 @@
   function say(t) { hint = t; hintUntil = Date.now() + 3500; }
 
   /* ---------- sound (synthesised, no files) ---------- */
-  let ac = null, master = null, muted = false, lastSfx = {};
+  let ac = null, master = null, rev = null, muted = false, music = true, lastSfx = {}, musicT = 0, mIdx = 4, mCount = 0;
+  const SAVE = 'ashur-save-v2';
   function audio() {
-    if (!ac) { try { ac = new (window.AudioContext || window.webkitAudioContext)(); master = ac.createGain(); master.gain.value = 0.5; master.connect(ac.destination); } catch (e) { return false; } }
+    if (!ac) {
+      try {
+        ac = new (window.AudioContext || window.webkitAudioContext)();
+        const comp = ac.createDynamicsCompressor(); master = ac.createGain(); master.gain.value = muted ? 0 : 0.6; master.connect(comp); comp.connect(ac.destination);
+        const len = Math.floor(ac.sampleRate * 2.6), ir = ac.createBuffer(2, len, ac.sampleRate);
+        for (let c = 0; c < 2; c++) { const dd = ir.getChannelData(c); for (let i = 0; i < len; i++) dd[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 2.8); }
+        const cv = ac.createConvolver(); cv.buffer = ir; rev = ac.createGain(); rev.gain.value = 0.5; rev.connect(cv); cv.connect(master);
+      } catch (e) { return false; }
+    }
     if (ac.state === 'suspended') ac.resume();
     return true;
   }
-  function tone(f, at, d, type, vol, f2) {
-    const o = ac.createOscillator(), g = ac.createGain(), t = ac.currentTime + at;
-    o.type = type; o.frequency.setValueAtTime(f, t); if (f2) o.frequency.exponentialRampToValueAtTime(f2, t + d);
-    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, t + d);
-    o.connect(g); g.connect(master); o.start(t); o.stop(t + d + 0.05);
+  function out(node, wet) { node.connect(master); if (wet) { const g = ac.createGain(); g.gain.value = wet; node.connect(g); g.connect(rev); } }
+  function osc(type, f, at, a, dcy, vol, o) {
+    o = o || {}; const t = ac.currentTime + at, os = ac.createOscillator(), g = ac.createGain();
+    os.type = type; os.frequency.setValueAtTime(f, t); if (o.to) os.frequency.exponentialRampToValueAtTime(o.to, t + a + dcy); if (o.detune) os.detune.value = o.detune;
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + a); g.gain.exponentialRampToValueAtTime(0.0001, t + a + dcy);
+    let n = os;
+    if (o.lp) { const fl = ac.createBiquadFilter(); fl.type = 'lowpass'; fl.Q.value = 1.2; fl.frequency.setValueAtTime(o.lp, t); if (o.lpTo) fl.frequency.exponentialRampToValueAtTime(o.lpTo, t + a + dcy * 0.5); os.connect(fl); n = fl; }
+    n.connect(g); out(g, o.wet || 0); os.start(t); os.stop(t + a + dcy + 0.1);
   }
-  function noise(at, d, vol, freq) {
-    const n = Math.floor(ac.sampleRate * d), buf = ac.createBuffer(1, n, ac.sampleRate), ch = buf.getChannelData(0);
-    for (let i = 0; i < n; i++) ch[i] = (Math.random() * 2 - 1) * (1 - i / n);
-    const s = ac.createBufferSource(), fl = ac.createBiquadFilter(), g = ac.createGain(), t = ac.currentTime + at;
-    s.buffer = buf; fl.type = 'bandpass'; fl.frequency.value = freq; fl.Q.value = 0.8; g.gain.value = vol;
-    s.connect(fl); fl.connect(g); g.connect(master); s.start(t);
+  function nz(at, a, dcy, vol, type, freq, wet, freqTo) {
+    const dur = a + dcy, n = Math.floor(ac.sampleRate * dur), buf = ac.createBuffer(1, n, ac.sampleRate), ch = buf.getChannelData(0);
+    for (let i = 0; i < n; i++) ch[i] = Math.random() * 2 - 1;
+    const src = ac.createBufferSource(), fl = ac.createBiquadFilter(), g = ac.createGain(), t = ac.currentTime + at;
+    src.buffer = buf; fl.type = type; fl.frequency.setValueAtTime(freq, t); if (freqTo) fl.frequency.exponentialRampToValueAtTime(freqTo, t + dur); fl.Q.value = 0.9;
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + a); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    src.connect(fl); fl.connect(g); out(g, wet || 0); src.start(t);
   }
+  const drum = (at, vol, f) => { f = f || 78; osc('sine', f * 1.9, at, 0.004, 0.26, vol, { to: f * 0.6, wet: 0.3 }); nz(at, 0.003, 0.06, vol * 0.5, 'lowpass', 1100, 0.2); };
+  const horn = (f, at, d, vol, to) => { osc('sawtooth', f, at, 0.09, d, vol, { lp: 380, lpTo: 1500, detune: -7, wet: 0.6, to: to }); osc('sawtooth', f, at, 0.09, d, vol, { lp: 380, lpTo: 1500, detune: 7, wet: 0.6, to: to }); osc('sine', f / 2, at, 0.1, d, vol * 0.8, { wet: 0.3, to: to ? to / 2 : 0 }); };
+  const clash = (at, vol) => { const b = 850 + Math.random() * 700; [1, 1.48, 2.09, 2.9, 3.71].forEach((r, i) => osc(i % 2 ? 'square' : 'triangle', b * r, at, 0.002, 0.1 + Math.random() * 0.3, vol / (1 + i * 0.5), { wet: 0.5 })); nz(at, 0.002, 0.1, vol * 2.5, 'highpass', 4200, 0.4); };
+  const gong = (at, f, vol) => { [1, 2.02, 2.74, 3.76, 5.1].forEach((r, i) => osc('sine', f * r, at, 0.006, 2.8 / (i + 1) + 0.6, vol / (1 + i * 0.9), { wet: 0.8, to: f * r * 0.985 })); nz(at, 0.003, 0.12, vol, 'lowpass', 420, 0.5); };
+  const pluck = (f, at, vol) => { osc('triangle', f, at, 0.004, 1.2, vol, { wet: 0.6 }); osc('sine', f * 2.005, at, 0.004, 0.45, vol * 0.35, { wet: 0.5 }); nz(at, 0.001, 0.02, vol * 0.6, 'bandpass', f * 3, 0.1); };
+  const roar = (at, d, vol) => { nz(at, d * 0.35, d * 0.65, vol, 'bandpass', 650, 0.6, 900); nz(at, d * 0.4, d * 0.6, vol * 0.5, 'bandpass', 1500, 0.5); };
   const SFX = {
-    click: () => tone(700, 0, 0.05, 'triangle', 0.12),
-    select: () => { tone(520, 0, 0.07, 'triangle', 0.15); tone(780, 0.06, 0.09, 'triangle', 0.13); },
-    march: () => { for (let i = 0; i < 3; i++) { noise(i * 0.16, 0.1, 0.7, 140); tone(95, i * 0.16, 0.13, 'sine', 0.5, 50); } },
-    clash: () => { noise(0, 0.22, 0.45, 3800); tone(1900, 0, 0.18, 'square', 0.04, 800); noise(0.13, 0.2, 0.35, 5200); tone(2400, 0.13, 0.15, 'square', 0.03, 1100); },
-    win: () => { tone(196, 0, 0.45, 'triangle', 0.3); tone(294, 0.22, 0.5, 'triangle', 0.3); tone(392, 0.45, 0.9, 'triangle', 0.3); },
-    lose: () => { tone(233, 0, 0.5, 'triangle', 0.3, 175); tone(175, 0.4, 0.9, 'triangle', 0.3, 110); },
-    capture: () => { tone(110, 0, 1.8, 'sine', 0.5); tone(277, 0, 1.3, 'sine', 0.16); tone(416, 0, 0.9, 'sine', 0.08); noise(0, 0.08, 0.3, 900); },
-    war: () => { tone(98, 0, 1.3, 'sawtooth', 0.12, 104); tone(147, 0.08, 1.2, 'triangle', 0.2); noise(0, 0.15, 0.5, 120); noise(0.5, 0.15, 0.5, 120); },
-    coin: () => { tone(1320, 0, 0.08, 'triangle', 0.18); tone(1760, 0.07, 0.16, 'triangle', 0.18); },
-    muster: () => { for (let i = 0; i < 4; i++) noise(i * 0.07, 0.06, 0.5, 260); tone(330, 0.3, 0.25, 'triangle', 0.15); },
-    chime: () => { [523, 659, 784, 1047].forEach((f, i) => tone(f, i * 0.11, 0.7, 'sine', 0.16)); },
-    error: () => tone(150, 0, 0.14, 'square', 0.06)
+    click: () => { nz(0, 0.001, 0.03, 0.2, 'highpass', 2600); pluck(880, 0, 0.05); },
+    select: () => { pluck(587, 0, 0.14); pluck(880, 0.08, 0.11); },
+    march: () => { [0, 0.22, 0.44, 0.55, 0.66].forEach((t, i) => drum(t, i === 0 || i === 2 ? 0.7 : 0.4)); for (let i = 0; i < 6; i++) nz(i * 0.13, 0.01, 0.07, 0.12, 'lowpass', 500, 0.2); },
+    clash: () => { clash(0, 0.06); clash(0.07 + Math.random() * 0.15, 0.045); if (Math.random() < 0.5) nz(0.1, 0.05, 0.25, 0.1, 'bandpass', 3000, 0.3, 600); if (Math.random() < 0.4) roar(0, 0.9, 0.06); },
+    win: () => { horn(196, 0, 0.45, 0.1); horn(262, 0.3, 0.45, 0.1); horn(392, 0.6, 1.4, 0.12); roar(0.2, 2, 0.22); [0, 0.3, 0.6].forEach(t => drum(t, 0.6)); },
+    lose: () => { horn(175, 0, 0.9, 0.1, 160); horn(131, 0.7, 1.6, 0.1, 110); drum(0, 0.6, 60); drum(0.7, 0.6, 55); },
+    capture: () => { gong(0, 98, 0.35); roar(0.1, 2.2, 0.28); clash(0.05, 0.04); horn(294, 0.5, 1, 0.07); },
+    war: () => { horn(98, 0, 1.7, 0.14); horn(147, 0.2, 1.6, 0.09); [0, 0.5, 1, 1.25, 1.5].forEach(t => drum(t, 0.7, 62)); },
+    alarm: () => { horn(233, 0, 0.3, 0.1); horn(233, 0.42, 0.3, 0.1); horn(311, 0.84, 0.7, 0.1); drum(0, 0.5); drum(0.42, 0.5); },
+    coin: () => { [[2093, 3136], [2637, 3951]].forEach((p, i) => { osc('sine', p[0], i * 0.08, 0.002, 0.3, 0.1, { wet: 0.3 }); osc('sine', p[1], i * 0.08, 0.002, 0.2, 0.06, { wet: 0.3 }); }); },
+    muster: () => { for (let i = 0; i < 7; i++) drum(i * 0.065, 0.25 + i * 0.05, 110); horn(294, 0.5, 0.45, 0.07); },
+    chime: () => { [294, 370, 440, 587, 740].forEach((f, i) => pluck(f, i * 0.12, 0.13)); },
+    storm: () => { roar(0, 2.2, 0.3); for (let i = 0; i < 6; i++) clash(0.2 + i * 0.22 + Math.random() * 0.1, 0.04); [0, 0.35, 0.7, 1.05].forEach(t => drum(t, 0.75, 58)); },
+    build: () => { [0, 0.2, 0.4].forEach(t => { osc('square', 320, t, 0.002, 0.06, 0.07, { lp: 1800, wet: 0.3 }); nz(t, 0.002, 0.05, 0.25, 'bandpass', 1400, 0.3); }); },
+    event: () => { gong(0, 147, 0.14); pluck(294, 0.25, 0.1); pluck(311, 0.5, 0.1); },
+    error: () => osc('sine', 190, 0, 0.005, 0.16, 0.14, { to: 120 })
   };
   function sfx(name) {
     const now = Date.now(); if (muted || (lastSfx[name] && now - lastSfx[name] < 250) || !ac || ac.state !== 'running') return;
     lastSfx[name] = now; try { SFX[name](); } catch (e) { /* audio is optional */ }
+  }
+  const SCALE = [146.83, 155.56, 185, 196, 220, 233.08, 261.63, 293.66, 311.13, 370, 392, 440];
+  function musicTick() {
+    if (!ac || ac.state !== 'running' || muted || !music || ac.currentTime < musicT) return;
+    const battle = fights.size > 0, r = Math.random();
+    mIdx = Math.max(0, Math.min(SCALE.length - 1, mIdx + (r < 0.4 ? -1 : r < 0.8 ? 1 : r < 0.9 ? -2 : 2)));
+    if (Math.random() < 0.82) pluck(SCALE[mIdx], 0, 0.055);
+    if (mCount % 4 === 0) pluck(SCALE[mIdx % 3 === 0 ? 0 : 4] / 2, 0, 0.05);
+    if (mCount % 8 === 0) { osc('sine', 73.42, 0, 1.2, 5, 0.05, { wet: 0.5 }); osc('sine', 110, 0, 1.5, 4.5, 0.025, { wet: 0.5 }); }
+    if (battle) { drum(0, 0.3, 66); if (mCount % 2) drum(0.2, 0.18, 66); }
+    mCount++;
+    const steps = battle ? [0.4, 0.4, 0.4, 0.8] : [0.45, 0.45, 0.9, 0.9, 1.35, 1.8];
+    musicT = ac.currentTime + steps[Math.floor(Math.random() * steps.length)];
   }
 
   /* ---------- map ---------- */
@@ -182,12 +218,20 @@
     const f = S.facs[ME], e = G.econ(f), net = e.inc - e.up;
     const goals = G.GOALS.map(n => { const ok = G.provByName(n).owner === ME; return '<span class="' + (ok ? 'good' : 'muted') + '">' + (ok ? '&#10003; ' : '') + n + '</span>'; }).join(' &middot; ');
     setHTML('top', '<h1>Ashur Ascendant</h1>' +
-      '<span class="stat">Silver <b>' + Math.floor(f.silver) + '</b> <span class="' + (net < 0 ? 'bad' : 'muted') + '">' + (net >= 0 ? '+' : '') + net + '/mo</span></span>' +
+      '<span class="stat">Silver <b>' + Math.floor(f.silver) + '</b> <span class="' + (net < 0 ? 'bad' : 'muted') + '">' + (net >= 0 ? '+' : '') + net + '/mo</span>' + (e.trib ? ' <span class="good">incl. ' + e.trib + ' tribute</span>' : '') + '</span>' +
       '<span class="stat">Manpower <b>' + fmt(f.mp) + '</b> <span class="muted">+' + fmt(e.mp) + '/mo</span></span>' +
       '<span class="stat">Army <b>' + fmt(G.menOf(ME)) + '</b></span><span>Goal: ' + goals + '</span><span class="sp"></span>' +
-      '<span class="cz"><b>' + G.dateStr() + '</b></span><span>' +
+      '<span class="cz"><b>' + G.dateStr() + '</b>' + (G.isWinter() ? ' <span class="muted">Winter</span>' : '') + '</span><span>' +
       ['Pause', '&#9654;', '&#9654;&#9654;', '&#9654;&#9654;&#9654;'].map((t, i) => '<span class="btn' + (speed === i ? ' on' : '') + '" data-act="speed" data-v="' + i + '">' + t + '</span>').join(' ') +
-      ' <span class="btn" data-act="mute">' + (muted ? 'Sound off' : 'Sound on') + '</span></span>');
+      ' <span class="btn" data-act="mute">' + (muted ? 'Sound off' : 'Sound on') + '</span> <span class="btn" data-act="music">' + (music ? 'Music on' : 'Music off') + '</span></span>');
+  }
+  function provActions(p) {
+    if (p.owner === ME) {
+      let h = '<div style="margin-top:6px;line-height:2.1">';
+      for (const k in G.BUILD) { const b = G.BUILD[k], lvl = k === 'w' ? p.fort : p.bld[k], ok = lvl < b.max && S.facs[ME].silver >= b.cost; h += '<span class="btn' + (ok ? '' : ' off') + '" data-act="build" data-v="' + k + '" title="' + b.desc + '">' + b.name + ' ' + (lvl >= b.max ? 'max' : b.cost) + '</span> '; }
+      return h + '</div><div class="muted">Market +6 silver, Granary +300 manpower, Walls +1.</div>';
+    }
+    return G.atWar(ME, p.owner) ? '' : '<div style="margin-top:6px"><span class="btn" data-act="war" data-v="' + p.owner + '">Declare war</span></div>';
   }
   function musterProv() { return selProv !== null && S.provs[selProv].owner === ME ? selProv : S.facs[ME].capital; }
   function drawSide() {
@@ -197,13 +241,14 @@
       const here = S.provs[a.prov];
       const st = a.retreating ? 'Retreating' : a.inCombat ? 'In battle at ' + here.name : a.path.length ? 'Marching to ' + S.provs[a.path[a.path.length - 1]].name : G.atWar(ME, here.owner) ? 'Besieging ' + here.name : 'Camped at ' + here.name;
       h += '<h3>' + a.name + '</h3><div class="card"><div class="row"><span><b>' + fmt(G.total(a)) + '</b> men</span><span class="muted">' + st + '</span></div>' +
-        '<div class="muted">Morale ' + Math.round(a.morale) + '</div><div class="bar"><i style="width:' + Math.max(0, a.morale) + '%;background:' + (a.morale > 50 ? '#7fe07a' : '#f0a030') + '"></i></div>' +
+        '<div>General ' + a.gen.name + ' <span style="color:#f3d584">' + '&#9733;'.repeat(a.gen.skill) + '</span></div><div class="muted">Veterancy ' + Math.round(a.xp) + ' &middot; Morale ' + Math.round(a.morale) + (a.attr ? ' &middot; <span class="bad">attrition</span>' : '') + '</div><div class="bar"><i style="width:' + Math.max(0, a.morale) + '%;background:' + (a.morale > 50 ? '#7fe07a' : '#f0a030') + '"></i></div>' +
         Object.keys(G.UNITS).filter(t => a.men[t] >= 1).map(t => '<div>' + uiIcon(t) + G.UNITS[t].name + ' <b>' + Math.round(a.men[t]) + '</b></div>').join('') +
-        '<div style="margin-top:8px"><span class="btn" data-act="split">Split</span> <span class="btn" data-act="merge">Merge</span> <span class="btn" data-act="halt">Halt</span> <span class="btn" data-act="desel">Close</span></div></div>';
+        '<div style="margin-top:8px;line-height:2.1">' + (G.atWar(ME, here.owner) && !a.inCombat && !a.path.length ? '<span class="btn" data-act="storm">Storm the walls</span> ' : '') + '<span class="btn" data-act="split">Split</span> <span class="btn" data-act="merge">Merge</span> <span class="btn" data-act="halt">Halt</span> <span class="btn" data-act="desel">Close</span></div></div>';
     } else if (p) {
       const o = S.facs[p.owner];
       h += '<h3>' + p.name + '</h3><div class="card"><div class="row"><span><span class="sw" style="background:' + o.color + '"></span>' + o.name + '</span><span class="muted">' + (o.capital === p.id ? 'Capital' : '') + '</span></div>' +
-        '<div class="muted">Silver ' + p.silver + ' &middot; Manpower ' + p.mp + ' &middot; Walls ' + p.fort + (p.mtn ? ' &middot; Mountains' : '') + '</div></div>';
+        '<div class="muted">Silver ' + (p.silver + p.bld.m * 6) + ' &middot; Manpower ' + (p.mp + p.bld.g * 300) + ' &middot; Walls ' + p.fort + (p.mtn ? ' &middot; Mountains' : '') + '</div>' +
+        (p.unrest > 0 ? '<div class="bad">Unrest ' + Math.round(p.unrest) + '% <span class="muted">(a garrison calms it)</span></div>' : '') + provActions(p) + '</div>';
     }
     h += '<h3>Muster at ' + S.provs[musterProv()].name + '</h3><div class="muted">Select one of your provinces to muster there instead.</div>';
     for (const t in G.UNITS) {
@@ -219,11 +264,11 @@
     }
     h += '<h3>Realms</h3>';
     for (const id in S.facs) {
-      if (id === ME) continue; const o = S.facs[id];
+      if (id === ME || id === 'REB') continue; const o = S.facs[id];
       if (!o.alive) { h += '<div class="row muted"><span><span class="sw" style="background:' + o.color + '"></span><s>' + o.name + '</s></span><span>Fallen</span></div>'; continue; }
       const war = G.atWar(ME, id), ally = G.allyOf(id);
-      h += '<div class="row"><span><span class="sw" style="background:' + o.color + '"></span>' + o.name + (war ? ' <span class="bad">at war</span>' : '') + '<br><span class="muted">' + fmt(G.menOf(id)) + ' men' + (ally && S.facs[ally].alive ? ' &middot; allied to ' + S.facs[ally].name : '') + '</span></span>' +
-        (war ? '<span class="btn" data-act="peace" data-v="' + id + '">Peace</span>' : '<span class="btn" data-act="war" data-v="' + id + '">War</span>') + '</div>';
+      h += '<div class="row"><span><span class="sw" style="background:' + o.color + '"></span>' + o.name + (war ? ' <span class="bad">at war</span>' : o.tributary ? ' <span class="good">tributary</span>' : '') + '<br><span class="muted">' + fmt(G.menOf(id)) + ' men' + (ally && S.facs[ally].alive ? ' &middot; allied to ' + S.facs[ally].name : '') + '</span></span>' +
+        '<span style="white-space:nowrap">' + (o.tributary ? '' : '<span class="btn" data-act="tribute" data-v="' + id + '">Tribute</span> ') + (war ? '<span class="btn" data-act="peace" data-v="' + id + '">Peace</span>' : '<span class="btn" data-act="war" data-v="' + id + '">War</span>') + '</span></div>';
     }
     setHTML('side', h);
   }
@@ -232,6 +277,7 @@
     const p = S.provs[+pg.dataset.prov], o = S.facs[p.owner];
     let h = '<b>' + p.name + '</b>' + (o.capital === p.id ? ' (capital)' : '') + '<br><span class="sw" style="background:' + o.color + '"></span>' + o.name +
       (G.atWar(ME, p.owner) ? ' <span class="bad">at war</span>' : '') + '<br><span class="muted">Walls ' + p.fort + (p.mtn ? ' &middot; Mountains' : '') + ' &middot; Silver ' + p.silver + '</span>';
+    if (p.unrest > 0) h += '<br><span class="bad">Unrest ' + Math.round(p.unrest) + '%</span>';
     if (p.siege > 0) h += '<br><span class="bad">Siege ' + Math.round(100 * p.siege / G.siegeNeed(p)) + '%</span>';
     for (const a of S.armies) if (a.prov === p.id) h += '<br>' + (a.owner === ME ? a.name : S.facs[a.owner].name) + ': ' + fmt(G.total(a)) + ' men';
     return h;
@@ -240,7 +286,7 @@
   function listen() {
     for (const l of S.log) {
       if (heard.has(l)) continue; heard.add(l); const t = l.text;
-      if (t.indexOf('Victory') === 0) sfx('win'); else if (/fallen to our|is no more/.test(t)) sfx('capture'); else if (/declared war/.test(t)) sfx('war');
+      if (/Revolt|stopped paying|broken our oath/.test(t)) sfx('alarm'); else if (t.indexOf('Victory') === 0) sfx('win'); else if (/fallen to our|is no more/.test(t)) sfx('capture'); else if (/declared war/.test(t)) sfx('war');
       else if (/mustered/.test(t)) sfx('muster'); else if (/Edict/.test(t)) sfx('chime'); else if (l.kind === 'bad') sfx('lose');
     }
     const now = new Set(); for (const a of S.armies) if (a.owner === ME && a.inCombat) now.add(a.prov);
@@ -254,10 +300,16 @@
     setHTML('log', S.log.slice(-5).map(l => '<div class="' + l.kind + '">' + l.text + '</div>').join(''));
     setHTML('hint', Date.now() < hintUntil ? hint : DEFAULT_HINT);
     if (!modal && S.events.length) {
-      modal = S.events.shift(); $('mt').textContent = modal.title; $('mb').innerHTML = modal.text;
-      $('modal').querySelector('.btn').textContent = modal.restart ? 'Play again' : 'Continue'; $('modal').style.display = 'flex';
+      showModal(S.events.shift());
     }
   }
+  function showModal(m) {
+    modal = m; $('mt').textContent = m.title; $('mb').innerHTML = m.text;
+    $('mbtn').innerHTML = m.choices ? m.choices.map((c, i) => '<span class="btn" data-act="choice" data-v="' + i + '">' + c.label + '</span>').join(' ') : '<span class="btn" data-act="close">' + (m.restart ? 'Play again' : 'Continue') + '</span>';
+    $('modal').style.display = 'flex'; sfx('event');
+  }
+  function reset() { selArmy = selProv = null; fights = new Set(); floaters = []; for (const p of S.provs) prevOwner[p.id] = p.owner; for (const l of S.log) heard.add(l); }
+  function saveGame() { try { if (S.over === 'lose') localStorage.removeItem(SAVE); else localStorage.setItem(SAVE, G.save()); } catch (e) { /* storage is optional */ } }
   function draw() { drawPanels(); drawArmies(performance.now()); }
 
   /* ---------- input ---------- */
@@ -276,7 +328,12 @@
   function act(name, v) {
     const a = S.armies.find(x => x.id === selArmy); let snd = 'click';
     if (name === 'speed') speed = +v;
-    else if (name === 'mute') muted = !muted;
+    else if (name === 'mute') { muted = !muted; if (master) master.gain.value = muted ? 0 : 0.6; }
+    else if (name === 'music') music = !music;
+    else if (name === 'tribute') { const r = G.demandTribute(v); if (r) { say(r); snd = 'error'; } else snd = 'chime'; }
+    else if (name === 'build') snd = G.build(selProv, v) ? 'build' : 'error';
+    else if (name === 'storm' && a) { if (G.storm(a)) snd = 'storm'; else { say('The men need ten days before another assault.'); snd = 'error'; } }
+    else if (name === 'choice') { const c = modal.choices[+v]; $('modal').style.display = 'none'; modal = null; if (c.ui === 'load') { S = G.load(localStorage.getItem(SAVE)); reset(); } else if (c.fx) c.fx(); snd = 'coin'; }
     else if (name === 'recruit') { if (G.recruit(ME, v, musterProv())) snd = 'coin'; else { say('Not enough silver or manpower.'); snd = 'error'; } }
     else if (name === 'edict') { G.startEdict(v); snd = 'coin'; }
     else if (name === 'war') G.declareWar(ME, v);
@@ -287,7 +344,7 @@
     else if (name === 'desel') selArmy = null;
     else if (name === 'close') {
       $('modal').style.display = 'none';
-      if (modal && modal.restart) { S = G.newGame(); selArmy = selProv = null; speed = 0; fights = new Set(); for (const p of S.provs) prevOwner[p.id] = p.owner; }
+      if (modal && modal.restart) { S = G.newGame(); speed = 0; reset(); saveGame(); }
       modal = null;
     }
     sfx(snd);
@@ -326,17 +383,19 @@
     if (e.code === 'Space') { e.preventDefault(); speed = speed ? 0 : 1; }
     else if (e.key >= '1' && e.key <= '3') speed = +e.key;
     else if (e.key === 'Escape') selArmy = null;
-    else if (e.key === 'm') muted = !muted;
+    else if (e.key === 'm') { muted = !muted; if (master) master.gain.value = muted ? 0 : 0.6; }
     draw();
   });
 
-  build(); draw();
+  build();
+  try { const sv = localStorage.getItem(SAVE), dd = sv ? JSON.parse(sv).day : 0; if (dd > 30) showModal({ title: 'Resume your reign?', text: 'A saved campaign was found, last played on ' + G.dateStr(dd) + '. The game saves itself every month.', choices: [{ label: 'Continue campaign', ui: 'load' }, { label: 'New campaign', ui: 'new' }] }); } catch (e) { /* no save */ }
+  draw();
   let last = performance.now();
   function frame(now) {
     const dt = Math.min(0.25, (now - last) / 1000); last = now;
-    if (!modal && speed) { acc += SPEEDS[speed] * dt; let n = 0; while (acc >= 1) { acc--; G.tick(); n++; } if (n) panelAt = 0; }
+    if (!modal && speed) { acc += SPEEDS[speed] * dt; let n = 0; while (acc >= 1) { acc--; G.tick(); n++; if (S.day % 30 === 0) saveGame(); } if (n) panelAt = 0; }
     if (now >= panelAt) { drawPanels(); panelAt = now + 120; }
-    drawArmies(now);
+    drawArmies(now); musicTick();
     requestAnimationFrame(frame);
   }
   requestAnimationFrame(frame);
