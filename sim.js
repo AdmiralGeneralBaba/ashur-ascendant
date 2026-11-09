@@ -210,7 +210,7 @@
   }
   function report(b, p, destroyed) {
     if (b.owner === PLAYER) log(b.name + (destroyed ? ' was destroyed at ' : ' was routed at ') + p.name + '.', 'bad');
-    else if ((b.foes || []).some(x => x.owner === PLAYER)) log('Victory at ' + p.name + ': the host of ' + S.facs[b.owner].name + (destroyed ? ' is annihilated.' : ' flees the field.'), 'good');
+    else if ((b.foes || []).some(x => x.owner === PLAYER)) log('Victory at ' + p.name + ': the host of ' + S.facs[b.owner].name + (destroyed ? ' is annihilated.' : ' is cut down in pursuit and flees. Catch it again and it is finished.'), 'good');
   }
   function combat(p, list) {
     const act = list.filter(a => !a.retreating && !a.dead); if (act.length < 2) return;
@@ -224,7 +224,12 @@
     for (const [b, d] of pend) { const t = total(b), c = Math.min(t, d), k = (t - c) / t; for (const u in b.men) b.men[u] *= k; b.morale -= c / t * 400 + 0.3; }
     for (const b of pend.keys()) {
       if (total(b) < 50) { b.dead = true; report(b, p, true); }
-      else if (b.morale < 25) { if (retreat(b, p)) report(b, p, false); else { b.dead = true; report(b, p, true); } }
+      else if (b.morale < 25) {
+        const fm = b.foes.reduce((s, x) => s + total(x), 0), fc = b.foes.reduce((s, x) => s + x.men.cav + x.men.char, 0);
+        const k = 1 - Math.min(0.7, 0.25 + 2 * fc / Math.max(1, fm)); for (const u in b.men) b.men[u] *= k;
+        const again = b.routDay !== undefined && S.day - b.routDay < 90;
+        if (!again && total(b) >= 1500 && retreat(b, p)) { b.routDay = S.day; report(b, p, false); } else { b.dead = true; report(b, p, true); }
+      }
     }
   }
 

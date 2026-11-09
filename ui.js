@@ -146,6 +146,27 @@
     }
     return [x, y];
   }
+  function battleScene(p, list, now) {
+    const sides = {};
+    for (const a of list) { const s = sides[a.owner] = sides[a.owner] || { o: a.owner, n: 0, men: { spear: 0, bow: 0, cav: 0, char: 0, ram: 0 } }; s.n += G.total(a); for (const t in s.men) s.men[t] += a.men[t]; }
+    const arr = Object.values(sides).sort((x, y) => (y.o === ME) - (x.o === ME)), L = arr[0], R = arr[1]; if (!R) return '';
+    let h = '<g transform="translate(' + p.x + ',' + (p.y + 37) + ')"><rect x="-42" y="-18" width="84" height="37" rx="4" fill="rgba(15,8,2,.7)" stroke="#d21f1f" stroke-width="1.1"/>';
+    [L, R].forEach((s, si) => {
+      const dir = si ? -1 : 1, col = S.facs[s.o].color; let front = 0, back = 0;
+      ['spear', 'cav', 'char', 'bow', 'ram'].filter(t => s.men[t] >= 50).forEach((t, i) => {
+        const fast = t === 'cav' || t === 'char', rear = t === 'bow' || t === 'ram', ph = now / (fast ? 240 : 170) + i * 1.7 + si;
+        const row = rear ? back++ : front++;
+        const x = -dir * (rear ? 33 : 13 + (row % 2) * 9) + dir * (rear ? 0 : fast ? Math.max(0, Math.sin(ph)) * 10 : Math.sin(ph) * 2.2), y = rear ? -8 + row * 12 : -10 + row * 9;
+        h += '<circle cx="' + x.toFixed(1) + '" cy="' + y + '" r="4.5" fill="' + col + '" stroke="#fff" stroke-width=".6"/><use class="ic" href="#i-' + t + '" x="' + (x - 3.3).toFixed(1) + '" y="' + (y - 3.3) + '" width="6.6" height="6.6"/>';
+        if (t === 'bow') for (let k = 0; k < 3; k++) { const v = (now / 650 + k / 3 + si * 0.5) % 1, ax = -dir * 31 + dir * 60 * v, ay = y - Math.sin(Math.PI * v) * 14; h += '<line x1="' + ax.toFixed(1) + '" y1="' + ay.toFixed(1) + '" x2="' + (ax - dir * 4.5).toFixed(1) + '" y2="' + (ay + Math.cos(Math.PI * v) * 3).toFixed(1) + '" stroke="#fff" stroke-width=".9"/>'; }
+      });
+    });
+    h += '<path d="M0-4l1.2 2.8 2.8 1.2-2.8 1.2L0 4l-1.2-2.8L-4 0l2.8-1.2z" fill="#ffd27a" transform="translate(' + (Math.sin(now / 70) * 3).toFixed(1) + ',' + (Math.cos(now / 50) * 7).toFixed(1) + ') scale(' + (0.7 + (Math.floor(now / 90) % 4) * 0.25) + ')"/>';
+    const w = 76 * L.n / (L.n + R.n);
+    h += '<rect x="-38" y="21" width="' + w.toFixed(1) + '" height="4.5" fill="' + S.facs[L.o].color + '" stroke="#000" stroke-width=".4"/><rect x="' + (-38 + w).toFixed(1) + '" y="21" width="' + (76 - w).toFixed(1) + '" height="4.5" fill="' + S.facs[R.o].color + '" stroke="#000" stroke-width=".4"/>' +
+      '<text class="fl" y="35" style="font-size:8px" fill="#ffb0a0">BATTLE ' + fmt(L.n) + ' v ' + fmt(R.n) + '</text></g>';
+    return h;
+  }
   function drawArmies(now) {
     const by = {}; for (const a of S.armies) (by[a.prov] = by[a.prov] || []).push(a);
     const items = [];
@@ -160,9 +181,9 @@
       ar += '<g class="army ic" data-army="' + a.id + '" data-prov="' + a.prov + '" transform="translate(' + it[1].toFixed(1) + ',' + (it[2] + bob).toFixed(1) + ')">' +
         (sel ? '<ellipse cx="0" cy="3" rx="' + (24 + Math.sin(now / 200) * 2).toFixed(1) + '" ry="6.5" fill="rgba(255,255,255,.18)" stroke="#fff" stroke-width="1.4"/>' : '') +
         '<line x1="-19" y1="-21" x2="-19" y2="4" stroke="#24180a" stroke-width="1.6"/><circle cx="-19" cy="-21.5" r="1.5" fill="#f3d584" stroke="none"/>' +
-        '<path d="M-19-20h37l-4.5 6.5 4.5 6.5h-37z" fill="' + col + '" stroke="' + (mine ? '#fff0b8' : '#170f05') + '" stroke-width="' + (mine ? 1.3 : 0.9) + '"/>' +
+        '<path d="M-19-20h37l-4.5 6.5 4.5 6.5h-37z" fill="' + (a.retreating ? '#ececec' : col) + '" stroke="' + (mine ? '#fff0b8' : '#170f05') + '" stroke-width="' + (mine ? 1.3 : 0.9) + '"/>' +
         '<path d="M-19-20h37l-1.4 2h-35.6z" fill="rgba(255,255,255,.25)" stroke="none"/>' +
-        '<text class="n" x="-2" y="-10.3" stroke-linecap="butt">' + fmt(G.total(a)) + '</text>' + ic +
+        '<text class="n" x="-2" y="-10.3" stroke-linecap="butt">' + fmt(G.total(a)) + '</text>' + ic + (a.retreating ? '<text class="n" x="0" y="-33" style="font-size:7px;letter-spacing:1px">ROUTED</text>' : '') +
         '<rect x="-18" y="-5.6" width="35" height="2.4" rx="1" fill="rgba(0,0,0,.6)" stroke="none"/><rect x="-18" y="-5.6" width="' + (35 * Math.max(0, a.morale) / 100).toFixed(1) + '" height="2.4" rx="1" fill="' + (a.morale > 50 ? '#7fe07a' : '#f0a030') + '" stroke="none"/></g>';
     }
     setHTML('ga', ar);
@@ -175,18 +196,16 @@
     }
     for (const p of S.provs) {
       if (p.type !== 'land') continue;
+      const here = by[p.id];
       if (p.siege > 0) {
         const f = Math.min(1, p.siege / G.siegeNeed(p)), c = 2 * Math.PI * 11;
         fx += '<circle cx="' + p.x + '" cy="' + p.y + '" r="11" fill="none" stroke="rgba(0,0,0,.55)" stroke-width="3.4"/><circle cx="' + p.x + '" cy="' + p.y + '" r="11" fill="none" stroke="#ff6a3c" stroke-width="2.4" stroke-dasharray="' + (c * f).toFixed(1) + ' ' + c.toFixed(1) + '" transform="rotate(-90 ' + p.x + ' ' + p.y + ')"/>';
+        const ram = here && here.some(a => a.men.ram >= 50), sw = Math.max(0, Math.sin(now / 200)) * 6;
+        fx += '<g transform="translate(' + (p.x - 24 + sw).toFixed(1) + ',' + (p.y - 1) + ')"><circle r="5.2" fill="rgba(18,11,3,.9)" stroke="#ff6a3c" stroke-width=".9"/><use class="ic" href="#i-' + (ram ? 'ram' : 'spear') + '" x="-3.7" y="-3.7" width="7.4" height="7.4"/></g>' +
+          '<text class="fl" x="' + p.x + '" y="' + (p.y + 25) + '" style="font-size:8px" fill="#ffb38a">SIEGE ' + Math.round(f * 100) + '%</text>';
+        if (f > 0.4) for (let i = 0; i < 3; i++) fx += '<path d="M0 0q-3-4 0-9q3 5 0 9z" fill="' + (i % 2 ? '#ffd27a' : '#ff7a2a') + '" transform="translate(' + (p.x + 5 + i * 5) + ',' + (p.y - 3) + ') scale(' + (0.7 + 0.35 * Math.sin(now / 90 + i * 2)).toFixed(2) + ')"/>';
       }
-      const here = by[p.id];
-      if (here && here.some(a => a.inCombat)) {
-        const t = {}; for (const a of here) if (a.inCombat) t[a.owner] = (t[a.owner] || 0) + G.total(a);
-        const s = 1 + Math.sin(now / 130) * 0.16;
-        top += '<circle cx="' + (p.x + 30) + '" cy="' + (p.y - 16) + '" r="' + (13 * s).toFixed(1) + '" fill="url(#glow)" opacity=".55"/>' +
-          '<text x="' + (p.x + 30) + '" y="' + (p.y - 10) + '" font-size="' + (17 * s).toFixed(1) + '" text-anchor="middle" fill="#fff" stroke="#b01515" stroke-width=".7">&#9876;</text>' +
-          '<text class="lbl" x="' + (p.x + 30) + '" y="' + (p.y + 1) + '" style="font-weight:bold">' + Object.keys(t).sort((x, y) => (y === ME) - (x === ME)).map(o => fmt(t[o])).join(' v ') + '</text>';
-      }
+      if (here && here.some(a => a.inCombat)) top += battleScene(p, here.filter(a => a.inCombat), now);
     }
     floaters = floaters.filter(f => now - f.t < 2600);
     for (const f of floaters) { const k = (now - f.t) / 2600; top += '<text class="fl" x="' + f.x + '" y="' + (f.y - 30 - k * 26).toFixed(1) + '" fill="' + f.c + '" opacity="' + (1 - k * k).toFixed(2) + '">' + f.text + '</text>'; }
@@ -332,7 +351,7 @@
     else if (name === 'music') music = !music;
     else if (name === 'tribute') { const r = G.demandTribute(v); if (r) { say(r); snd = 'error'; } else snd = 'chime'; }
     else if (name === 'build') snd = G.build(selProv, v) ? 'build' : 'error';
-    else if (name === 'storm' && a) { if (G.storm(a)) snd = 'storm'; else { say('The men need ten days before another assault.'); snd = 'error'; } }
+    else if (name === 'storm' && a) { if (G.storm(a)) { snd = 'storm'; const q = S.provs[a.prov]; floaters.push({ x: q.x, y: q.y, t: performance.now(), text: 'Assault!', c: '#ffb38a' }); } else { say('The men need ten days before another assault.'); snd = 'error'; } }
     else if (name === 'choice') { const c = modal.choices[+v]; $('modal').style.display = 'none'; modal = null; if (c.ui === 'load') { S = G.load(localStorage.getItem(SAVE)); reset(); } else if (c.fx) c.fx(); snd = 'coin'; }
     else if (name === 'recruit') { if (G.recruit(ME, v, musterProv())) snd = 'coin'; else { say('Not enough silver or manpower.'); snd = 'error'; } }
     else if (name === 'edict') { G.startEdict(v); snd = 'coin'; }
@@ -388,6 +407,7 @@
   });
 
   build();
+  $('legend').innerHTML = '<b class="cz">Troops</b><br>' + Object.keys(ICONS).map(t => uiIcon(t) + G.UNITS[t].name).join('<br>') + '<br><span class="muted">Red box: battle. Orange ring: siege.<br>White banner: routed, finish it off.</span>';
   try { const sv = localStorage.getItem(SAVE), dd = sv ? JSON.parse(sv).day : 0; if (dd > 30) showModal({ title: 'Resume your reign?', text: 'A saved campaign was found, last played on ' + G.dateStr(dd) + '. The game saves itself every month.', choices: [{ label: 'Continue campaign', ui: 'load' }, { label: 'New campaign', ui: 'new' }] }); } catch (e) { /* no save */ }
   draw();
   let last = performance.now();

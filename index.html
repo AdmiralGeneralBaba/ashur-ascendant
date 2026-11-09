@@ -48,6 +48,8 @@
   #map .army .n { font-size: 9px; font-weight: bold; fill: #fff; text-anchor: middle; paint-order: stroke; stroke: rgba(0,0,0,.75); stroke-width: 2.2px; }
   #map .fl { font: 700 11px Cinzel, Georgia, serif; text-anchor: middle; paint-order: stroke; stroke: rgba(0,0,0,.8); stroke-width: 3px; }
   #log, #hint, #tip { position: absolute; background: rgba(13,20,36,.92); border: 1px solid var(--line); border-radius: 4px; padding: 6px 10px; font-size: 12px; pointer-events: none; z-index: 1; }
+  #legend { position: absolute; left: 10px; top: 10px; background: rgba(13,20,36,.88); border: 1px solid var(--line); border-radius: 4px; padding: 6px 10px; font-size: 11px; line-height: 2; pointer-events: none; z-index: 1; }
+  #legend svg.ui { width: 18px; height: 18px; padding: 2px; margin-right: 6px; }
   #log { right: 10px; bottom: 10px; width: 340px; } #log div { padding: 1px 0; }
   #hint { left: 10px; bottom: 10px; }
   #tip { display: none; width: 195px; border-color: var(--gold); z-index: 5; }
@@ -64,7 +66,7 @@
   <aside id="side"></aside>
   <div id="mapwrap">
     <svg id="map" viewBox="0 0 1200 700" preserveAspectRatio="xMidYMid meet"></svg>
-    <div id="hint"></div><div id="tip"></div>
+    <div id="legend"></div><div id="hint"></div><div id="tip"></div>
     <div id="log"></div>
   </div>
 </div>
