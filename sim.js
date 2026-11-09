@@ -453,10 +453,8 @@
       if (p.type !== 'land' || p.owner === 'REB' || p.unrest <= 0) continue;
       const garr = (by.get(p.id) || []).some(a => a.owner === p.owner);
       p.unrest = Math.max(0, p.unrest - (garr ? 7 : 2));
-      if (!garr && p.unrest > 35 && S.facs[p.owner].capital !== p.id && Math.random() < p.unrest / 900) revolt(p);
     }
-    const R = S.facs.REB;
-    if (!S.armies.some(a => a.owner === 'REB') && !countProvs('REB')) { for (const k in R.war) delete S.facs[k].war.REB; R.war = {}; }
+    purgeRebels();
     for (const id in S.facs) {
       const f = S.facs[id]; if (id === PLAYER || id === 'REB' || !f.alive) continue;
       for (const o of Object.keys(f.war)) if (o !== PLAYER && o !== 'REB' && S.day - f.war[o] > 420) { makePeace(id, o); log(f.name + ' and ' + S.facs[o].name + ' have made peace.'); }
@@ -469,8 +467,18 @@
     }
     if (!S.auto && S.day >= S.nextEvent) { randomEvent(); S.nextEvent = S.day + 140 + Math.floor(Math.random() * 120); }
   }
+  function purgeRebels() {
+    for (const a of S.armies) if (a.owner === 'REB') a.dead = true;
+    S.armies = S.armies.filter(a => !a.dead);
+    for (const p of S.provs) {
+      if (p.owner === 'REB') p.owner = S.facs[p.core].alive ? p.core : PLAYER;
+      if (p.sieger === 'REB') { p.sieger = null; p.siege = 0; }
+    }
+    for (const id in S.facs) delete S.facs[id].war.REB;
+    S.facs.REB.war = {};
+  }
   function save() { return JSON.stringify(S, (k, v) => (k === 'foes' || k === 'events') ? undefined : v); }
-  function load(str) { S = JSON.parse(str); S.events = []; return S; }
+  function load(str) { S = JSON.parse(str); S.events = []; purgeRebels(); return S; }
 
   function tick() {
     if (S.over === 'lose') return;

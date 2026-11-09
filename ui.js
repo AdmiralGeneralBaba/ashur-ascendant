@@ -248,7 +248,7 @@
       const o = S.facs[p.owner];
       h += '<h3>' + p.name + '</h3><div class="card"><div class="row"><span><span class="sw" style="background:' + o.color + '"></span>' + o.name + '</span><span class="muted">' + (o.capital === p.id ? 'Capital' : '') + '</span></div>' +
         '<div class="muted">Silver ' + (p.silver + p.bld.m * 6) + ' &middot; Manpower ' + (p.mp + p.bld.g * 300) + ' &middot; Walls ' + p.fort + (p.mtn ? ' &middot; Mountains' : '') + '</div>' +
-        (p.unrest > 0 ? '<div class="bad">Unrest ' + Math.round(p.unrest) + '% <span class="muted">(a garrison calms it)</span></div>' : '') + provActions(p) + '</div>';
+        (p.unrest > 0 ? '<div class="bad">Unrest ' + Math.round(p.unrest) + '% <span class="muted">(lowers income; fades with time, faster with an army here)</span></div>' : '') + provActions(p) + '</div>';
     }
     h += '<h3>Muster at ' + S.provs[musterProv()].name + '</h3><div class="muted">Select one of your provinces to muster there instead.</div>';
     for (const t in G.UNITS) {
