@@ -282,18 +282,19 @@
     return f.name + ' refuses. They do not feel beaten.';
   }
 
-  function recruit(fid, type) {
+  function recruit(fid, type, prov) {
     const f = S.facs[fid], u = UNITS[type];
     const cost = Math.round(u.cost * ((type === 'cav' || type === 'char') ? f.mods.cav : 1));
     if (f.silver < cost || f.mp < u.men) return false;
-    f.silver -= cost; f.mp -= u.men; f.queue.push({ type, left: u.days }); return true;
+    f.silver -= cost; f.mp -= u.men; f.queue.push({ type, left: u.days, prov: prov === undefined ? null : prov }); return true;
   }
   function unitCost(fid, type) { const f = S.facs[fid]; return Math.round(UNITS[type].cost * ((type === 'cav' || type === 'char') ? f.mods.cav : 1)); }
-  function muster(f, type) {
-    let a = S.armies.find(x => !x.dead && x.owner === f.id && x.prov === f.capital && !x.path.length && !x.retreating);
-    if (!a) a = mkArmy(f.id, f.capital, {}, f.id === PLAYER ? 'Levy of Kalhu ' + (S.levy++) : 'Host of ' + f.name);
+  function muster(f, q) {
+    const type = q.type, at = (q.prov !== null && q.prov !== undefined && S.provs[q.prov].owner === f.id) ? q.prov : f.capital;
+    let a = S.armies.find(x => !x.dead && x.owner === f.id && x.prov === at && !x.path.length && !x.retreating);
+    if (!a) a = mkArmy(f.id, at, {}, f.id === PLAYER ? 'Levy of ' + S.provs[at].name + ' ' + (S.levy++) : 'Host of ' + f.name);
     a.men[type] += UNITS[type].men;
-    if (f.id === PLAYER) log(UNITS[type].name + ' mustered at ' + S.provs[f.capital].name + ' and joined ' + a.name + '.');
+    if (f.id === PLAYER) log(UNITS[type].name + ' mustered at ' + S.provs[at].name + ' and joined ' + a.name + '.');
   }
   function startEdict(id) {
     const f = S.facs[PLAYER], e = EDICTS.find(x => x.id === id);
@@ -377,7 +378,7 @@
       const f = S.facs[id]; if (!f.alive) continue;
       for (const q of f.queue) q.left--;
       const done = f.queue.filter(q => q.left <= 0); f.queue = f.queue.filter(q => q.left > 0);
-      for (const q of done) muster(f, q.type);
+      for (const q of done) muster(f, q);
       if (f.edict && --f.edict.left <= 0) {
         const e = EDICTS.find(x => x.id === f.edict.id); e.fx(f.mods); f.done[e.id] = true; f.edict = null;
         log('Edict proclaimed: ' + e.name + '.', 'good');
@@ -422,7 +423,7 @@
   root.Game = {
     W, H, PLAYER, UNITS, EDICTS, GOALS, ALLIES, PDEF,
     newGame, tick, order, halt, recruit, unitCost, startEdict, declareWar, proposePeace, split, merge, econ,
-    total, menOf, countProvs, atWar, canEnter, findPath, siegeNeed, dateStr, provByName, allyOf,
+    reach: (fid, from) => bfs(fid, from).dist, total, menOf, countProvs, atWar, canEnter, findPath, siegeNeed, dateStr, provByName, allyOf,
     get S() { return S; }
   };
 })(typeof window !== 'undefined' ? window : globalThis);
