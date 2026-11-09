@@ -208,9 +208,10 @@
     opts.sort((x, y) => (S.provs[y].owner === a.owner) - (S.provs[x].owner === a.owner));
     a.retreating = true; a.path = [opts[0]]; a.prog = 0; a.morale = Math.max(a.morale, 12); return true;
   }
-  function report(b, p, destroyed) {
-    if (b.owner === PLAYER) log(b.name + (destroyed ? ' was destroyed at ' : ' was routed at ') + p.name + '.', 'bad');
-    else if ((b.foes || []).some(x => x.owner === PLAYER)) log('Victory at ' + p.name + ': the host of ' + S.facs[b.owner].name + (destroyed ? ' is annihilated.' : ' is cut down in pursuit and flees. Catch it again and it is finished.'), 'good');
+  function report(b, p, destroyed, home) {
+    const tail = home ? ' ' + home + ' survivors straggle home to the manpower pool.' : '';
+    if (b.owner === PLAYER) log(b.name + ' broke and scattered at ' + p.name + '.' + tail, 'bad');
+    else if ((b.foes || []).some(x => x.owner === PLAYER)) log('Victory at ' + p.name + ': the host of ' + S.facs[b.owner].name + ' is broken and scattered.', 'good');
   }
   function combat(p, list) {
     const act = list.filter(a => !a.retreating && !a.dead); if (act.length < 2) return;
@@ -225,10 +226,8 @@
     for (const b of pend.keys()) {
       if (total(b) < 50) { b.dead = true; report(b, p, true); }
       else if (b.morale < 25) {
-        const fm = b.foes.reduce((s, x) => s + total(x), 0), fc = b.foes.reduce((s, x) => s + x.men.cav + x.men.char, 0);
-        const k = 1 - Math.min(0.7, 0.25 + 2 * fc / Math.max(1, fm)); for (const u in b.men) b.men[u] *= k;
-        const again = b.routDay !== undefined && S.day - b.routDay < 90;
-        if (!again && total(b) >= 1500 && retreat(b, p)) { b.routDay = S.day; report(b, p, false); } else { b.dead = true; report(b, p, true); }
+        const home = Math.round(total(b) * 0.35); if (S.facs[b.owner].alive) S.facs[b.owner].mp = Math.min(60000, S.facs[b.owner].mp + home);
+        b.dead = true; report(b, p, true, home);
       }
     }
   }

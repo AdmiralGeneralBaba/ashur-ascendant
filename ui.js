@@ -183,7 +183,7 @@
         '<line x1="-19" y1="-21" x2="-19" y2="4" stroke="#24180a" stroke-width="1.6"/><circle cx="-19" cy="-21.5" r="1.5" fill="#f3d584" stroke="none"/>' +
         '<path d="M-19-20h37l-4.5 6.5 4.5 6.5h-37z" fill="' + (a.retreating ? '#ececec' : col) + '" stroke="' + (mine ? '#fff0b8' : '#170f05') + '" stroke-width="' + (mine ? 1.3 : 0.9) + '"/>' +
         '<path d="M-19-20h37l-1.4 2h-35.6z" fill="rgba(255,255,255,.25)" stroke="none"/>' +
-        '<text class="n" x="-2" y="-10.3" stroke-linecap="butt">' + fmt(G.total(a)) + '</text>' + ic + (a.retreating ? '<text class="n" x="0" y="-33" style="font-size:7px;letter-spacing:1px">ROUTED</text>' : '') +
+        '<text class="n" x="-2" y="-10.3" stroke-linecap="butt">' + fmt(G.total(a)) + '</text>' + ic + (a.retreating ? '<text class="n" x="0" y="-33" style="font-size:7px;letter-spacing:1px">RETREATING</text>' : '') +
         '<rect x="-18" y="-5.6" width="35" height="2.4" rx="1" fill="rgba(0,0,0,.6)" stroke="none"/><rect x="-18" y="-5.6" width="' + (35 * Math.max(0, a.morale) / 100).toFixed(1) + '" height="2.4" rx="1" fill="' + (a.morale > 50 ? '#7fe07a' : '#f0a030') + '" stroke="none"/></g>';
     }
     setHTML('ga', ar);
@@ -407,7 +407,7 @@
   });
 
   build();
-  $('legend').innerHTML = '<b class="cz">Troops</b><br>' + Object.keys(ICONS).map(t => uiIcon(t) + G.UNITS[t].name).join('<br>') + '<br><span class="muted">Red box: battle. Orange ring: siege.<br>White banner: routed, finish it off.</span>';
+  $('legend').innerHTML = '<b class="cz">Troops</b><br>' + Object.keys(ICONS).map(t => uiIcon(t) + G.UNITS[t].name).join('<br>') + '<br><span class="muted">Red box: battle. Orange ring: siege.<br>A broken army scatters for good.<br>Order a fighting army away to retreat.</span>';
   try { const sv = localStorage.getItem(SAVE), dd = sv ? JSON.parse(sv).day : 0; if (dd > 30) showModal({ title: 'Resume your reign?', text: 'A saved campaign was found, last played on ' + G.dateStr(dd) + '. The game saves itself every month.', choices: [{ label: 'Continue campaign', ui: 'load' }, { label: 'New campaign', ui: 'new' }] }); } catch (e) { /* no save */ }
   draw();
   let last = performance.now();
